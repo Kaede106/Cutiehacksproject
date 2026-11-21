@@ -16,6 +16,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 from farm.common import store
 
 from .access import is_allowed, photo_path
+from .chat import Conversation, farm_context, keyword_intent, strip_html
 from .compose import Message, compose
 from .config import Config
 from .irrigation import Advice, advise, water_message
@@ -103,9 +104,10 @@ async def send(bot: Any, chat_id: int, message: Message, data_dir: Path) -> None
 
 
 class Handlers:
-    def __init__(self, config: Config, state: State) -> None:
+    def __init__(self, config: Config, state: State, conversation: Conversation | None = None) -> None:
         self.config = config
         self.state = state
+        self.conversation = conversation or Conversation()
 
     def _allowed(self, update: Update) -> bool:
         chat = update.effective_chat
@@ -169,7 +171,39 @@ class Handlers:
     async def text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not self._allowed(update):
             return
-        await update.effective_message.reply_text(COMMANDS_LINE)
+        question = (update.effective_message.text or "").strip()
+        chat_id = update.effective_chat.id
+        now = datetime.now(self.config.timezone)
+        if question and self.conversation.enabled:
+            try:
+                await context.bot.send_chat_action(chat_id, "typing")
+            except Exception:
+                pass
+            facts = await asyncio.to_thread(self._farm_context, now)
+            answer = await self.conversation.reply(chat_id, question, facts, now.date())
+            if answer:
+                await update.effective_message.reply_text(answer)
+                return
+        intent = keyword_intent(question)
+        if intent == "status":
+            await self._send_current(context.bot, chat_id)
+        elif intent == "water":
+            await self.water(update, context)
+        elif intent == "help":
+            await self.help(update, context)
+        else:
+            await update.effective_message.reply_text(
+                "Ask me about your oranges or about watering, or use " + COMMANDS_LINE[len("I understand "):])
+
+    def _farm_context(self, now: datetime) -> str:
+        scan = store.latest_scan(max_age=None)
+        sensors = store.latest_sensors(max_age=None)
+        try:
+            watering = strip_html(water_message(water_advice(self.config, now), now.date()))
+        except Exception:
+            log.exception("Could not work out the watering advice for a chat answer")
+            watering = None
+        return farm_context(scan, sensors, watering, now)
 
     async def water(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not self._allowed(update):

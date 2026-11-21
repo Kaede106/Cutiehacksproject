@@ -82,10 +82,17 @@ def test_stop_unsubscribes(data):
     assert "unsubscribed" in u.effective_message.reply_text.call_args.args[0]
 
 
-def test_free_text_without_claude_lists_commands(data):
-    u = update(1, "what should I do with the moldy one?")
+def test_free_text_without_ai_matches_keywords(data):
+    ctx = context()
+    run(handlers(data).text(update(1, "what should I do with the moldy one?"), ctx))
+    assert ctx.bot.send_message.call_args.args[0] == 1  # answered with today's status
+
+
+def test_free_text_without_ai_and_no_keyword_lists_commands(data):
+    u = update(1, "tell me a joke")
     run(handlers(data).text(u, context()))
-    u.effective_message.reply_text.assert_called_once_with(COMMANDS_LINE)
+    reply = u.effective_message.reply_text.call_args.args[0]
+    assert reply.startswith("Ask me about your oranges") and "/status" in reply
 
 
 def test_status_sends_text_and_the_mold_photo(data):

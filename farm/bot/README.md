@@ -176,3 +176,12 @@ They cover the composer, watering advice and forecast cache, schedule and config
 ## Files
 
 `compose.py` (message, pure), `irrigation.py` (watering advice, pure), `weather.py` (Open-Meteo and its cache), `app.py` (Telegram handlers and the daily job), `config.py`, `access.py`, `state.py`, `fixtures.py`, `__main__.py` (CLI).
+
+## Conversation (free text)
+
+Besides the commands, the bot answers plain questions in the grower's language, for example "¿Y las de la izquierda?" or "When should I water?".
+
+- **Always on: keywords.** English and Spanish words for oranges, ripeness, mold and watering map to the `/status` and `/water` answers (`farm/bot/chat.py`, `keyword_intent`).
+- **With `OPENAI_API_KEY` set: an OpenAI model** (default `OPENAI_MODEL=gpt-6-luna`) answers anything else. It only sees a text summary of the latest scan (counts, each orange's label, confidence and rough position in the picture), the latest sensor reading and the watering advice. It is told to answer only from that data and to say when the data is demo or simulated. It keeps the last 6 turns of each chat in memory, so follow-ups work.
+- **Limits:** `CHAT_DAILY_LIMIT` questions per chat per day (default 30) and `CHAT_GLOBAL_DAILY_LIMIT` for the whole bot (default 500), because anyone with the landing page's QR code can chat. Past the limit, and whenever the API fails, the bot falls back to keywords.
+- **What leaves the laptop:** the question, that chat's recent turns and the farm summary go to OpenAI. Photos never do.
