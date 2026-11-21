@@ -133,7 +133,7 @@ def data_lines() -> list[str]:
         s = scan.get("summary") or {}
         tag = " (demo)" if scan.get("demo") else ""
         lines.append(f"Last scan     {_age(scan.get('taken_at'))}{tag}: {s.get('ripe', 0)} ready, "
-                     f"{s.get('ripening', 0)} ripening, {s.get('unripe', 0)} unripe, {s.get('mold', 0)} possible mold")
+                     f"{s.get('ripening', 0)} ripening, {s.get('unripe', 0)} unripe")
     else:
         lines.append("Last scan     none yet")
     if sensors:

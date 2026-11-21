@@ -2,7 +2,7 @@
 
 `compose` is a pure function: it takes records as read through farm/common/store.py
 (see farm/CONTRACT.md) and the current time, and returns the text (Telegram HTML)
-and the photos to attach. It never touches the disk or the network, so it is easy
+as a Message. It never touches the disk or the network, so it is easy
 to test and to preview without Telegram.
 """
 from __future__ import annotations
@@ -12,17 +12,14 @@ import math
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Callable, Mapping
+from typing import Any, Mapping
+
+from farm.common.store import LABELS
 
 from .irrigation import Advice, advice_line
 
-LABELS = ("unripe", "ripening", "ripe", "mold")
-
 SCAN_MAX_AGE = timedelta(hours=24)
 SENSOR_MAX_AGE = timedelta(hours=1)  # same default as store.latest_sensors
-MAX_PHOTOS = 3
-
-_CONFIDENCE_RANK = {"high": 0, "medium": 1, "low": 2}
 
 
 @dataclass(frozen=True)
@@ -42,7 +39,6 @@ def compose(
     sensors: Mapping[str, Any] | None,
     now: datetime,
     *,
-    photo_ok: Callable[[str], bool] | None = None,
     scan_command: str | None = None,
     irrigation: Advice | None = None,
 ) -> Message:
@@ -51,38 +47,31 @@ def compose(
     scan, sensors: the latest records (or None). Freshness is judged here against `now`,
         so pass them unfiltered (store.latest_scan(max_age=None)).
     now: timezone-aware current time; times in the message are shown in its timezone.
-    photo_ok: tells whether a stored photo path can actually be sent. The text only says
-        "photo attached" for photos that pass. Defaults to accepting every path.
     scan_command: the command that runs a scan by hand (SCAN_COMMAND), shown when the grower
         needs one. None: the message asks them to run the camera program instead.
     irrigation: watering advice (irrigation.advise); one line after the oranges.
     """
     if now.tzinfo is None:
         raise ValueError("now must be timezone-aware")
-    photo_ok = photo_ok or (lambda _path: True)
 
     sensor_line = _sensor_line(sensors, now)
-    water_line = advice_line(irrigation, now.date()) if irrigation else None
+    water_line = advice_line(irrigation, now.date()) if irrigation else "Watering advice is unavailable."
     scan_time = _parse_time(scan.get("taken_at"), now) if scan else None
 
     if scan is None or scan_time is None or now - scan_time > SCAN_MAX_AGE:
-        return Message(_join([_no_recent_scan(scan, scan_time, now, scan_command), water_line, sensor_line]))
+        details = _no_recent_scan(scan, scan_time, now, scan_command)
+        return Message(_join(["<b>No scan in the last 24 hours.</b>", water_line, details, sensor_line]))
 
     counts = _counts(scan)
     if sum(counts.values()) == 0:
-        body = (
-            f"<b>The last scan ({_when(scan_time, now)}) found no oranges.</b>\n"
+        headline = f"<b>The last scan ({_when(scan_time, now)}) found no oranges.</b>"
+        details = (
             "Check that the camera points at the fruit and nothing blocks it, then "
             + _run_scan(scan_command, "scan again")
         )
-        return Message(_join([body, water_line, sensor_line, _footer(scan, scan_time, now, with_time=False)]))
-    footer = _footer(scan, scan_time, now)
-
-    photos = _mold_photos(scan, photo_ok)
-    whole_scan = len(photos) == 1 and photos[0].path == scan.get("image")
-    note = " (photo attached)" if whole_scan else _photo_note(counts["mold"], len(photos))
-    body = _headline(counts, note) + "\n\n" + "\n".join(_actions(scan, counts))
-    return Message(_join([body, water_line, sensor_line, footer]), tuple(photos))
+        return Message(_join([headline, water_line, details, sensor_line,
+                              _footer(scan, scan_time, now, with_time=False)]))
+    return Message(_join([_headline(counts), water_line, sensor_line, _footer(scan, scan_time, now)]))
 
 
 def to_plain(text: str) -> str:
@@ -93,48 +82,19 @@ def to_plain(text: str) -> str:
 # --- the parts of the message ------------------------------------------------
 
 
-def _headline(counts: Mapping[str, int], photo_note: str) -> str:
-    mold = counts["mold"]
-    parts = [f"{counts[k]} {name}" for k, name in
-             (("ripe", "ready to pick"), ("ripening", "ripening"), ("unripe", "unripe")) if counts[k]]
-    if mold:
-        parts.append(f"{mold} possible mold{photo_note}")
-        text = ", ".join(parts) + (": remove it today." if mold == 1 else ": remove them today.")
-    elif counts["ripe"]:
-        text = ", ".join(parts) + "."
-    else:
-        text = "Nothing to pick today."
-    return f"<b>{text}</b>"
-
-
-def _photo_note(mold: int, photo_count: int) -> str:
-    if photo_count == 0:
-        return ""
-    if photo_count >= mold:
-        return " (photo attached)" if mold == 1 else " (photos attached)"
-    return f" (photo of {photo_count} attached)" if photo_count == 1 else f" (photos of {photo_count} attached)"
-
-
-def _actions(scan: Mapping[str, Any], counts: Mapping[str, int]) -> list[str]:
-    lines = []
-    mold, ripe, ripening, unripe = counts["mold"], counts["ripe"], counts["ripening"], counts["unripe"]
-    if mold:
-        line = ("Remove the fruit with possible mold today, before the mold spreads." if mold == 1 else
-                f"Remove the {mold} fruits with possible mold today, before the mold spreads.")
-        if any(f.get("confidence") == "low" for f in _fruits(scan) if f.get("label") == "mold"):
-            line += " The model is not sure about every one, so check by eye first."
-        lines.append(line)
-    if ripe:
-        lines.append("Pick the orange that is ready." if ripe == 1 else f"Pick the {ripe} oranges that are ready.")
-    elif mold:
-        lines.append("Nothing is ready to pick yet.")
+def _headline(counts: Mapping[str, int]) -> str:
+    ripe, ripening, unripe = counts["ripe"], counts["ripening"], counts["unripe"]
+    parts = [f"{ripe} ready to pick today"] if ripe else []
     if ripening:
-        lines.append("Check the ripening one again in a few days." if ripening == 1 else
-                     f"Check the {ripening} ripening ones again in a few days.")
+        parts.append(f"{ripening} ripening")
     if unripe:
-        lines.append("Leave the unripe one on the tree." if unripe == 1 else
-                     f"Leave the {unripe} unripe ones on the tree.")
-    return lines
+        parts.append(f"{unripe} still green")
+    text = ", ".join(parts) + "."
+    if not ripe:
+        text = "Nothing to pick today. " + text
+    if ripening:
+        text += " Check again in a few days."
+    return f"<b>{text}</b>"
 
 
 def _no_recent_scan(scan: Mapping[str, Any] | None, scan_time: datetime | None, now: datetime,
@@ -146,7 +106,6 @@ def _no_recent_scan(scan: Mapping[str, Any] | None, scan_time: datetime | None, 
     else:
         last = f"The last one was {_when(scan_time, now)}."
     return (
-        "<b>No scan in the last 24 hours.</b>\n"
         f"{last} Check that the laptop is on and the webcam is connected, then "
         + _run_scan(scan_command, "run a scan")
         + "\nThen send /status."
@@ -194,27 +153,6 @@ def _footer(scan: Mapping[str, Any], scan_time: datetime, now: datetime, *,
     elif isinstance(model, str) and "heuristic" in model.lower():
         lines.append("Labels come from a colour check until the trained model is plugged in.")
     return "<i>" + "\n".join(lines) + "</i>" if lines else None
-
-
-def _mold_photos(scan: Mapping[str, Any], photo_ok: Callable[[str], bool]) -> list[Photo]:
-    molds = [f for f in _fruits(scan) if f.get("label") == "mold"]
-    molds.sort(key=lambda f: _CONFIDENCE_RANK.get(str(f.get("confidence")), 3))
-    photos = []
-    for fruit in molds:
-        crop = fruit.get("crop")
-        if not isinstance(crop, str) or not crop or not photo_ok(crop):
-            continue
-        conf = str(fruit.get("confidence"))
-        conf_text = f" ({_esc(conf)} confidence)" if conf in _CONFIDENCE_RANK else ""
-        photos.append(Photo(crop, f"Possible mold, fruit {_esc(fruit.get('id', '?'))}{conf_text}."))
-        if len(photos) == MAX_PHOTOS:
-            break
-    if not photos and molds:
-        # No crop to send: fall back to the whole scan image, once.
-        image = scan.get("image")
-        if isinstance(image, str) and image and photo_ok(image):
-            photos.append(Photo(image, "Whole scan. Look for the fruit with possible mold."))
-    return photos
 
 
 # --- helpers -----------------------------------------------------------------

@@ -1,23 +1,19 @@
 # CutieFarm Telegram bot
 
-Every morning at 9:00 (America/Los_Angeles) the bot tells the grower what to do with their oranges, based on the latest camera scan and sensor reading:
+Every morning at 9:00 (America/Los_Angeles) the bot answers two questions from the latest scan and sensor readings. Which oranges are ready to pick? When does the grove need water? Send `/status` for the same answers on demand.
 
 ```
-3 ready to pick, 5 ripening, 1 possible mold (photo attached): remove it today.
+3 ready to pick today, 5 ripening. Check again in a few days.
 
-Remove the fruit with possible mold today, before the mold spreads.
-Pick the 3 oranges that are ready.
-Check the 5 ripening ones again in a few days.
+Watering (simulated sensors): Water weekly, next on Tuesday, Nov 24. The trees need about 17 mm this week.
 
-Water weekly, next on Saturday, Nov 28. The trees need about 12 mm this week.
+Sensors (simulated) at 8:54 AM: soil moisture 47%, 28.3 °C (83 °F), humidity 22%, wind 4.5 m/s.
 
-Sensors at 8:59 AM: soil moisture 41%, 22.4 °C (72 °F), humidity 55%, wind 3.2 m/s.
-
-Scan: today at 9:00 AM.
-Labels come from a colour check until the trained model is plugged in.
+Scan: today at 8:56 AM.
+Demo data: the camera isn't connected yet, so this scan is an example.
 ```
 
-The photo of each fruit with possible mold (up to 3) follows the text. The bot only reads `scans.jsonl` and `sensors.jsonl` through `farm/common/store.py` (see `farm/CONTRACT.md`). It never talks to the camera or the board directly.
+The bot reads scans and sensor readings through [the shared data store](../CONTRACT.md).
 
 ## Setup (Windows, Python 3.14)
 
@@ -64,25 +60,23 @@ Commands in Telegram:
 
 | Command | What it does |
 |---|---|
-| `/start` | Subscribe this chat to the daily message (saved in `bot_state.json` in the data folder). |
+| `/start` | Subscribe this chat to the daily message and ready-to-pick alerts (saved in `bot_state.json` in the data folder). |
 | `/status` | Send the message now. |
 | `/water` | Watering advice, with the inputs it used. |
 | `/picked 3` | Log 3 oranges picked today. |
-| `/removed 1` | Log 1 orange removed today. |
 | `/watered` | Log that you watered today. |
 | `/undo` | Undo this chat's last harvest log entry. |
 | `/week` | Compare the first and latest scans in the last 7 days and see this chat's harvest totals and watering days. |
-| `/stop` | Unsubscribe. |
+| `/stop` | Stop the daily message and ready-to-pick alerts. |
 | `/help` | List the commands. |
 
-You can also log completed actions in English or Spanish, such as “I picked 3 oranges,” “quité 1 con hongo,” or “he regado.” Questions still go to the conversation handler.
+You can also log completed actions in English or Spanish, such as “I picked 3 oranges,” “recogí 3 naranjas,” or “he regado.” Questions still go to the conversation handler.
 
 The bot appends harvest actions to `harvest.jsonl` in `CUTIEFARM_DATA` with `taken_at`, `chat_id`, `kind`, `count` and the original `text`. `/undo` appends an undo marker for the chat's most recent action. Weekly totals exclude undone actions. The original JSONL lines stay on disk.
 
 ### Buttons
 
 - **Watering details** replies with the same advice as `/water`.
-- **Mold photos** resends the photos shown with that status while they are still available from the latest scan. The button appears only when the status has mold photos.
 - **Remind me in 2 h** sends a fresh status to this chat in two hours and confirms the time in the bot's timezone. Tapping again replaces the pending reminder. Pending reminders are cleared when the bot restarts.
 
 ### Keeping it running on Windows
@@ -100,18 +94,18 @@ The daily message only goes out while the bot is running and the laptop is awake
 ```powershell
 farm\bot\.venv\Scripts\python -m farm.bot preview                     # current data folder
 farm\bot\.venv\Scripts\python -m farm.bot preview --data D:\demo-data  # another folder
-farm\bot\.venv\Scripts\python -m farm.bot preview --fixture mold       # built-in made-up data
+farm\bot\.venv\Scripts\python -m farm.bot preview --fixture pick-and-water       # built-in made-up data
 farm\bot\.venv\Scripts\python -m farm.bot preview --fixture hot-dry --water   # the /water reply
-farm\bot\.venv\Scripts\python -m farm.bot preview --fixture mold --html       # raw Telegram HTML
+farm\bot\.venv\Scripts\python -m farm.bot preview --fixture pick-and-water --html       # raw Telegram HTML
 ```
 
-Fixtures: `ripe-heavy`, `mold` (the landing-page example), `empty` (no fruit found), `stale` (last scan 2 days ago), `unripe` (nothing to pick), `sensors-simulated`, and for watering `hot-dry`, `cool-wet`, `soil-low`, `sensors-only` (no forecast, sensor estimate) and `no-data`. The preview header marks fixture output as made-up data.
+Fixtures: `ripe-heavy`, `pick-and-water` (the landing-page example), `empty` (no fruit found), `stale` (last scan 2 days ago), `unripe` (nothing to pick), `sensors-simulated`, and for watering `hot-dry`, `cool-wet`, `soil-low`, `sensors-only` (no forecast, sensor estimate) and `no-data`. The preview header marks fixture output as made-up data.
 
 ## Demo tips
 
 - Judges will not wait until 9:00. Send `/status`, `/water` and `/week` live.
-- Point `CUTIEFARM_DATA` at a separate demo folder and run `python -m farm.bot seed-demo --week` using the bot's venv. It adds seven days of marked demo scans and example harvest entries. Any chat can see the examples in that folder's `/week` reply.
-- Without the camera or the board, run `preview --fixture mold` on the projector, or write a demo data folder with the snippet below and point `CUTIEFARM_DATA` at it.
+- Point `CUTIEFARM_DATA` at a separate demo folder and run `python -m farm.bot seed-demo --week` using the bot's venv. It adds seven days of marked demo scans, simulated sensor readings and example harvest entries. Any chat can see the examples in that folder's `/week` reply.
+- Without the camera or the board, run `preview --fixture pick-and-water` on the projector, or write a demo data folder with the snippet below and point `CUTIEFARM_DATA` at it.
 - Simulated sensor readings are always labelled "(simulated)" in the message. Keep it that way: it is what makes the demo honest.
 - Set `DAILY_AT` a couple of minutes ahead and restart the bot to show the scheduled message arriving on its own.
 
@@ -151,7 +145,7 @@ Every assumption is listed in the `/water` reply under "Based on". If there is n
 
 The bot only needs records in the data folder, written with `farm/common/store.py`. The exact fields are in [`farm/CONTRACT.md`](../CONTRACT.md). In short:
 
-- **Scans** (`scans.jsonl`): `taken_at`, `source` (`webcam`/`file`), `model` (any name containing `heuristic` adds the colour-check line), `image`, `fruits` (each with `id`, `label` in `unripe`/`ripening`/`ripe`/`mold`, `confidence` in `high`/`medium`/`low`, `bbox`, `crop`). Save a `crop` image for every `mold` fruit: that is the photo the grower gets. Paths are relative to the data folder. The bot sends only `.jpg`/`.jpeg`/`.png`/`.webp` files inside it.
+- **Scans** (`scans.jsonl`) contain `id`, `taken_at`, `source` (`webcam`/`file`), `model`, `image` and `fruits`. Each fruit has an `id`, a label (`unripe`, `ripening` or `ripe`), `confidence` (`high`, `medium` or `low`) and a `bbox`. The optional whole-scan `image` path is relative to the data folder. Alerts can attach `.jpg`, `.jpeg`, `.png` or `.webp` files inside that folder.
 - **Sensors** (`sensors.jsonl`): `taken_at`, `soil_moisture_pct`, `temperature_c`, `humidity_pct`, `wind_ms`. Use `null` for any sensor that is not connected, and `"simulated": true` for simulator output. For watering advice, write a reading every few minutes, all day: the bot uses the last 7 days.
 
 The bot treats a scan as current for 24 hours and a sensor reading for 1 hour.
@@ -165,9 +159,8 @@ store.append_scan({
     "model": "color-heuristic-v1",
     "image": "scans/20261121T090012-3f9a.jpg",
     "fruits": [
-        {"id": 1, "label": "ripe", "confidence": "high", "bbox": [412, 220, 96, 98], "crop": None},
-        {"id": 2, "label": "mold", "confidence": "medium", "bbox": [130, 300, 90, 92],
-         "crop": "scans/20261121T090012-3f9a-2.jpg"},
+        {"id": 1, "label": "ripe", "confidence": "high", "bbox": [412, 220, 96, 98]},
+        {"id": 2, "label": "ripening", "confidence": "medium", "bbox": [130, 300, 90, 92]},
     ],
 })  # fills taken_at and summary
 
@@ -195,8 +188,8 @@ They cover the composer, watering advice and forecast cache, schedule and config
 
 Besides the commands, the bot answers plain questions in the grower's language, for example "¿Y las de la izquierda?" or "When should I water?".
 
-- **Always on: keywords.** English and Spanish words for oranges, ripeness, mold and watering map to the `/status` and `/water` answers (`farm/bot/chat.py`, `keyword_intent`).
-- **With `OPENAI_API_KEY` set: an OpenAI model** (default `OPENAI_MODEL=gpt-6-luna`) answers anything else. It only sees a text summary of the latest scan (counts, each orange's label, confidence and rough position in the picture), the latest sensor reading and the watering advice. It is told to answer only from that data and to say when the data is demo or simulated. It keeps the last 6 turns of each chat in memory, so follow-ups work.
+- **Always on: keywords.** English and Spanish words for picking, ripeness and watering map to the `/status` and `/water` answers (`farm/bot/chat.py`, `keyword_intent`).
+- **With `OPENAI_API_KEY` set: an OpenAI model** (default `OPENAI_MODEL=gpt-6-luna`) answers questions about orange ripeness and grove watering. It only sees a text summary of the latest scan (counts, each orange's label, confidence and rough position in the picture), the latest sensor reading and the watering advice. It is told to answer only from that data and to say when the data is demo or simulated. It keeps the last 6 turns of each chat in memory, so follow-ups work.
 - **Limits:** `CHAT_DAILY_LIMIT` questions per chat per day (default 30) and `CHAT_GLOBAL_DAILY_LIMIT` for the whole bot (default 500), because anyone with the landing page's QR code can chat. Past the limit, and whenever the API fails, the bot falls back to keywords.
 - **What leaves the laptop:** the question, that chat's recent turns and the farm summary go to OpenAI. Photos never do.
 
@@ -206,7 +199,7 @@ Send a Telegram voice note or audio file up to 60 seconds long. The bot quotes w
 
 **Privacy:** The bot sends audio to OpenAI for transcription. When it uses the model to answer, it sends the transcript in the same way it sends a typed question. Each transcription attempt and each model answer use one call from the shared `CHAT_DAILY_LIMIT` and `CHAT_GLOBAL_DAILY_LIMIT` budgets.
 
-## Photos and instant mold alerts
+## Photos and instant ready-to-pick alerts
 
-- **Send the bot a photo of an orange.** It runs the same colour check as the web scanner (`farm/bot/peel.py`, a port of `web/src/scanner/classifier.js`) on the centre of the photo, on the laptop, and replies with the state: unripe, ripening, ready to pick or possible mold. The photo is never sent to OpenAI. If the chat has been talking in another language, the model only rewords the fixed reply into that language.
-- **Instant mold alerts.** Every 30 seconds the bot checks for a new scan. If it has possible mold, subscribers get an alert right away, with the photo, instead of waiting for 9:00. The scan that is already there when the bot starts doesn't trigger an alert. Try it with `python -m farm.bot seed-demo`, which writes a new demo scan with one moldy orange.
+- **Send the bot a photo of an orange.** It runs the same colour check as the web scanner on the centre of the photo and replies with unripe, ripening, ready to pick or no orange found. The photo stays on the laptop. If the chat has been talking in another language, the model can reword the fixed reply in that language.
+- **Ready-to-pick alerts.** Every 30 seconds the bot reads new scans and compares each ripe count with the previous scan. If the count rises, subscribers get one alert for that scan. The bot attaches the whole scan image if the file is available. The latest scan at startup sets the baseline.

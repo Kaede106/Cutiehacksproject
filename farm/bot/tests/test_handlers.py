@@ -43,9 +43,8 @@ def run(coro):
     return asyncio.run(coro)
 
 
-def add_scan(data, labels, crop="scans/x-1.jpg"):
-    fruits = [{"id": i, "label": lab, "confidence": "high", "bbox": [0, 0, 1, 1],
-               "crop": crop if lab == "mold" else None} for i, lab in enumerate(labels, start=1)]
+def add_scan(data, labels):
+    fruits = [{"id": i, "label": lab, "confidence": "high", "bbox": [0, 0, 1, 1]} for i, lab in enumerate(labels, start=1)]
     store.append_scan({"id": "x", "source": "webcam", "model": "color-heuristic-v1",
                        "image": "scans/x.jpg", "fruits": fruits})
 
@@ -97,7 +96,7 @@ def test_stop_unsubscribes(data):
 
 def test_free_text_without_ai_matches_keywords(data):
     ctx = context()
-    run(handlers(data).text(update(1, "what should I do with the moldy one?"), ctx))
+    run(handlers(data).text(update(1, "which are ready to pick?"), ctx))
     assert ctx.bot.send_message.call_args.args[0] == 1  # answered with today's status
 
 
@@ -105,7 +104,7 @@ def test_free_text_without_ai_and_no_keyword_lists_commands(data):
     u = update(1, "tell me a joke")
     run(handlers(data).text(u, context()))
     reply = u.effective_message.reply_text.call_args.args[0]
-    assert reply.startswith("Ask me about your oranges") and "/status" in reply
+    assert reply.startswith("CutieFarm only checks ripeness and watering") and "/status" in reply
 
 
 def test_exhausted_quota_prefers_keyword_answer(data):
@@ -128,34 +127,27 @@ def test_farm_context_failure_falls_back_without_model_call(data, monkeypatch, c
         raise ValueError("malformed data")
 
     monkeypatch.setattr(h, "_farm_context", malformed)
-    u, ctx = update(1, "any mold?"), context()
+    u, ctx = update(1, "any ready to pick?"), context()
     run(h.text(u, ctx))
     h.conversation.reply.assert_not_called()
     ctx.bot.send_message.assert_awaited_once()
     assert "Could not prepare a chat answer" in caplog.text
 
 
-def test_status_sends_text_and_the_mold_photo(data):
+def test_status_sends_picking_and_watering_without_legacy_photo(data):
     (data / "scans").mkdir()
-    (data / "scans" / "x-1.jpg").write_bytes(b"\xff\xd8\xff")
-    add_scan(data, ["mold", "ripe"])
+    (data / "scans" / "legacy.jpg").write_bytes(b"\xff\xd8\xff")
+    store._append(store.SCANS_FILE, {
+        "taken_at": store.now_iso(),
+        "fruits": [{"label": "mold", "crop": "scans/legacy.jpg"}, {"label": "ripe"}],
+    })
+    store.append_sensors({"soil_moisture_pct": 25.0})
     ctx = context()
     run(handlers(data).status(update(9, "/status"), ctx))
     text = ctx.bot.send_message.call_args.args[1]
-    assert text.startswith("<b>1 ready to pick, 1 possible mold (photo attached): remove it today.</b>")
+    assert text.startswith("<b>1 ready to pick today.</b>\n\nWater today.")
     assert ctx.bot.send_message.call_args.kwargs["parse_mode"] == "HTML"
-    assert ctx.bot.send_photo.call_args.kwargs["photo"] == (data / "scans" / "x-1.jpg").resolve()
-
-
-def test_photo_outside_data_folder_is_never_sent(data):
-    outside = data.parent / "private.jpg"
-    outside.write_bytes(b"\xff\xd8\xff")
-    add_scan(data, ["mold"], crop="../private.jpg")
-    ctx = context()
-    run(handlers(data).status(update(9), ctx))
     ctx.bot.send_photo.assert_not_called()
-    ctx.bot.send_media_group.assert_not_called()
-    assert "attached" not in ctx.bot.send_message.call_args.args[1]
 
 
 def test_status_with_no_data(data):
