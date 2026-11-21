@@ -19,19 +19,18 @@ ANALYSIS_SIZE = 128  # pixels per side of the analysed square, like the browser'
 CENTRE_SHARE = 0.7  # share of the photo's short side that is analysed
 
 TITLE = {"unripe": "Unripe", "ripening": "Ripening", "ripe": "Ready to pick",
-         "mold": "Possible mold", "none": "No orange found"}
+         "none": "No orange found"}
 ADVICE = {
     "unripe": "Mostly green peel. Leave it on the tree.",
-    "ripening": "Green turning orange. Check it again in a few days.",
-    "ripe": "Even, deep orange peel. It's ready to pick.",
-    "mold": "I see white fuzz or blue-green patches. Remove it before the mold spreads.",
+    "ripening": "Check it again in a few days.",
+    "ripe": "The peel colour suggests it's ready to pick.",
     "none": "I can't find an orange in the middle of the photo. Try again with the orange filling the centre, in daylight.",
 }
 
 
 @dataclass(frozen=True)
 class PhotoResult:
-    label: str  # unripe | ripening | ripe | mold | none
+    label: str  # unripe | ripening | ripe | none
     confidence: str  # high | medium | low
     scores: dict
 

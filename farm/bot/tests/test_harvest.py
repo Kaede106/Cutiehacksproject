@@ -10,7 +10,7 @@ from telegram import Chat, Message, MessageEntity, Update
 from telegram.ext import CommandHandler
 
 from farm.bot import __main__ as cli, demo, harvest
-from farm.bot.app import COMMANDS, build_application
+from farm.bot.app import COMMANDS, COMMANDS_LINE, build_application, build_message
 from farm.common import store
 
 from test_handlers import LA, context, data, handlers, run, update  # noqa: F401
@@ -25,9 +25,6 @@ NOW = datetime(2026, 11, 21, 12, tzinfo=LA)
     ("he recogido 3", ("picked", 3)),
     ("Recogí 3 naranjas", ("picked", 3)),
     ("recogi\u0301 3 naranjas hoy", ("picked", 3)),
-    ("I removed 1 moldy orange", ("removed", 1)),
-    ("removed the moldy one", ("removed", 1)),
-    ("quité 1 con hongo", ("removed", 1)),
     ("I watered", ("watered", 1)),
     ("watered", ("watered", 1)),
     ("he regado", ("watered", 1)),
@@ -46,7 +43,7 @@ def test_completed_actions_are_recognized(text, expected):
     "I will pick 3", "pick 3", "I picked oranges", "picked 0",
     "picked -3", "picked 1.5", "picked 3.0 oranges", "picked 3-5",
     "picked 3 dozen oranges", "picked 3 oranges yesterday",
-    "removed some moldy oranges", "removed the moldy one?",
+    "I removed 1 moldy orange", "removed the moldy one", "quité 1 con hongo",
     "should I water today?", "did you water", "I watered?",
     "I watered 2", "I already watered or maybe not",
     "¿riego hoy?", "riego hoy", "¿he regado?", "regué?",
@@ -63,7 +60,7 @@ def test_uncertain_or_incomplete_statements_are_left_to_chat(text):
 
 @pytest.mark.parametrize(("text", "expected"), [
     ("/picked 3", ("picked", 3)),
-    ("/removed 1", ("removed", 1)),
+    ("/removed 1", None),
     ("/watered", ("watered", 1)),
     ("/picked@CutieFarmBot   3", ("picked", 3)),
     ("/watered@CutieFarmBot", ("watered", 1)),
@@ -81,7 +78,7 @@ def test_commands_require_the_right_arguments(text, expected):
 def test_storage_and_undo_are_append_only_and_scoped_to_chat(data):
     harvest.append_entry(1, "picked", 3, "  recogí 3 naranjas  ", now=NOW)
     harvest.append_entry(2, "watered", 1, "/watered", now=NOW)
-    harvest.append_entry(1, "removed", 1, "/removed 1", now=NOW)
+    harvest.append_entry(1, "watered", 1, "/watered", now=NOW)
     path = data / "harvest.jsonl"
     before = path.read_bytes()
     assert len(before.splitlines()) == 3 and before.endswith(b"\n")
@@ -111,7 +108,7 @@ def test_harvest_limit_is_per_chat_and_day_and_shared_by_concurrent_updates(data
     for _ in range(24):
         harvest.append_entry(1, "picked", 1, "/picked 1", now=NOW)
         assert harvest.undo(1, now=NOW)
-    updates = [update(1, "/watered"), update(1, "picked 2"), update(1, "removed 1")]
+    updates = [update(1, "/watered"), update(1, "picked 2"), update(1, "picked 1")]
 
     async def record():
         return await asyncio.gather(*(harvest.maybe_record(1, u.effective_message, now=NOW, command=i == 0)
@@ -156,10 +153,14 @@ def test_week_with_no_data_or_only_one_scan(data):
 
 
 def test_week_orders_scans_and_counts_only_recent_active_entries_for_this_chat(data):
-    add_scan(NOW, ["ripe", "ripe", "ripening", "mold"])
+    store._append(store.SCANS_FILE, {
+        "taken_at": NOW.isoformat(),
+        "summary": {"ripe": 2, "ripening": 1, "mold": 1},
+        "fruits": [{"label": "mold", "crop": "scans/legacy.jpg"}],
+    })
     add_scan(NOW - timedelta(days=7), ["unripe", "unripe"])
     add_scan(NOW - timedelta(days=3), ["ripe"], simulated=True)
-    add_scan(NOW - timedelta(days=7, seconds=1), ["mold"], demo=True)
+    add_scan(NOW - timedelta(days=7, seconds=1), ["ripe"], demo=True)
     add_scan(NOW + timedelta(seconds=1), [], demo=True)
 
     def action(chat_id, kind, count, when, text="<b>original & text</b>"):
@@ -180,8 +181,9 @@ def test_week_orders_scans_and_counts_only_recent_active_entries_for_this_chat(d
         f.write('{"taken_at":"invalid"}\nnull\n{bad json}\n')
     text = harvest.week_summary(1, NOW)
     assert text.startswith("<b>Last 7 days</b>")
-    assert "Ready 0 → 2 · Ripening 0 → 1 · Unripe 2 → 0 · Possible mold 0 → 1" in text
-    assert "Picked 5 · Removed 1" in text
+    assert "Ready 0 → 2 · Ripening 0 → 1 · Unripe 2 → 0" in text
+    assert "Picked 5\nWatered:" in text
+    assert "removed" not in text.lower()
     assert "Watered: Thu Nov 19, Sat Nov 21" in text
     assert "Includes simulated data" in text and "demo" not in text
     assert "original" not in text
@@ -209,26 +211,29 @@ def test_command_registration_help_and_handlers(data):
     app = build_application(h.config)
     registered = {name for handler in app.handlers[0] if isinstance(handler, CommandHandler)
                   for name in handler.commands}
-    wanted = {"picked", "removed", "watered", "undo", "week"}
+    wanted = {"picked", "watered", "undo", "week"}
     assert wanted <= registered
     assert wanted <= {name for name, _ in COMMANDS}
     help_update = update(1, "/help")
     run(h.help(help_update, ctx))
     assert all(f"/{command}" in help_update.effective_message.reply_text.call_args.args[0] for command in wanted)
-    for text in ("/picked 3", "/removed 1", "/watered"):
+    assert "removed" not in registered | {name for name, _ in COMMANDS}
+    assert "/removed" not in COMMANDS_LINE
+    assert "/removed" not in help_update.effective_message.reply_text.call_args.args[0]
+    for text in ("/picked 3", "/watered"):
         u = update(1, text)
         run(h.record_harvest(u, ctx))
         assert u.effective_message.reply_text.call_args.args[0].startswith("Logged:")
     u = update(1, "/picked 3?")
     run(h.record_harvest(u, ctx))
     assert "Use /picked 3" in u.effective_message.reply_text.call_args.args[0]
-    assert len(harvest.entries(1)) == 3
+    assert len(harvest.entries(1)) == 2
     run(h.undo(update(1, "/undo"), ctx))
     u = update(1, "/week")
     run(h.week(u, ctx))
     reply = u.effective_message.reply_text.call_args
     assert reply.kwargs["parse_mode"] == "HTML"
-    assert "Picked 3 · Removed 1\nWatered: no days logged" in reply.args[0]
+    assert "Picked 3\nWatered: no days logged" in reply.args[0]
 
 
 @pytest.mark.parametrize(("method", "text"), [
@@ -253,8 +258,12 @@ def test_seed_demo_cli(data, monkeypatch, flags):
     sensors = list(store._read(store.SENSORS_FILE))
     assert len(scans) == (7 if flags else 1) and all(s["demo"] is True for s in scans)
     assert sensors and all(s["simulated"] is True for s in sensors)
-    assert scans[-1]["summary"] == {"ripe": 3, "ripening": 5, "unripe": 0, "mold": 1}
-    assert (data / next(f["crop"] for f in scans[-1]["fruits"] if f["label"] == "mold")).is_file()
+    assert scans[-1]["summary"] == {"ripe": 3, "ripening": 5, "unripe": 0}
+    assert all(set(s["summary"]) == set(store.LABELS) for s in scans)
+    assert all("crop" not in f for s in scans for f in s["fruits"])
+    assert not list(data.rglob("*.png"))
+    text = build_message(handlers(data).config, NOW).text
+    assert "3 ready to pick today, 5 ripening" in text and "Watering (simulated sensors): Water weekly" in text
     if not flags:
         assert not (data / harvest.HARVEST_FILE).exists()
         return
@@ -265,4 +274,4 @@ def test_seed_demo_cli(data, monkeypatch, flags):
     text = harvest.week_summary(987, NOW)
     assert text.count("Includes demo data") == 2
     assert "Ready 0 → 3" in text
-    assert "Picked 1 · Removed 1" in text
+    assert "Picked 1" in text
