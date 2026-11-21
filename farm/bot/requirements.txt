@@ -1,0 +1,9 @@
+# CutieFarm Telegram bot. Install into farm/bot/.venv (see README.md). Tested on Python 3.14.
+python-telegram-bot[job-queue]==22.8
+httpx==0.28.1
+python-dotenv==1.2.4
+tzdata==2026.6
+pytest==9.2.0
+numpy==2.3.5
+pillow==12.0.0
+pyserial==3.5
