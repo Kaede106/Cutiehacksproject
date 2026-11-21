@@ -17,7 +17,8 @@ from farm.common import store
 
 from .access import is_allowed, photo_path
 from .chat import Conversation, farm_context, keyword_intent, strip_html
-from .compose import Message, compose
+from .compose import Message, Photo, _mold_photos, compose
+from .photo import classify_photo, photo_reply
 from .config import Config
 from .irrigation import Advice, advise, water_message
 from .state import STATE_FILE, State
@@ -108,6 +109,7 @@ class Handlers:
         self.config = config
         self.state = state
         self.conversation = conversation or Conversation()
+        self._last_scan_id: str | None = None  # for instant mold alerts; set on the first check
 
     def _allowed(self, update: Update) -> bool:
         chat = update.effective_chat
@@ -195,6 +197,56 @@ class Handlers:
             await update.effective_message.reply_text(
                 "Ask me about your oranges or about watering, or use " + COMMANDS_LINE[len("I understand "):])
 
+    async def photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Someone sent a photo: run the colour check on its centre, on this laptop."""
+        if not self._allowed(update):
+            return
+        chat_id = update.effective_chat.id
+        message = update.effective_message
+        try:
+            await context.bot.send_chat_action(chat_id, "typing")
+        except Exception:
+            pass
+        try:
+            file = await message.photo[-1].get_file()
+            data = bytes(await file.download_as_bytearray())
+            result = await asyncio.to_thread(classify_photo, data)
+        except Exception:
+            log.exception("Could not check a photo from chat %s", chat_id)
+            await message.reply_text("I couldn't read that photo. Try sending it again as a normal photo, not a file.")
+            return
+        reply = photo_reply(result)
+        now = datetime.now(self.config.timezone)
+        worded = await self.conversation.reword(chat_id, reply, message.caption or "", now.date())
+        await message.reply_text(worded or reply)
+
+    async def watch_scans(self, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Instant alert: when a new scan has possible mold, tell subscribers now, not at 9:00."""
+        try:
+            scan = await asyncio.to_thread(store.latest_scan, None)
+        except Exception:
+            log.exception("Could not read the latest scan for mold alerts")
+            return
+        if not scan:
+            return
+        scan_id = str(scan.get("id") or scan.get("taken_at"))
+        if self._last_scan_id is None or scan_id == self._last_scan_id:
+            self._last_scan_id = scan_id  # the first check only sets the baseline
+            return
+        self._last_scan_id = scan_id
+        message = mold_alert(scan, store.data_dir())
+        if message is None:
+            return
+        chats = [c for c in self.state.chats() if is_allowed(c, self.config.allowed_chat_ids)]
+        log.info("Mold alert for scan %s: sending to %d chat(s).", scan_id, len(chats))
+        for chat_id in chats:
+            try:
+                await send(context.bot, chat_id, message, store.data_dir())
+            except Forbidden:
+                self.state.unsubscribe(chat_id)
+            except TelegramError:
+                log.exception("Could not send the mold alert to chat %s", chat_id)
+
     def _farm_context(self, now: datetime) -> str:
         scan = store.latest_scan(max_age=None)
         sensors = store.latest_sensors(max_age=None)
@@ -249,6 +301,24 @@ class Handlers:
             return Message("I could not read today's scan on the laptop. Check the bot's window for the error.")
 
 
+def mold_alert(scan: dict, data_dir: Path) -> Message | None:
+    """The instant alert for a scan with possible mold, or None if it has none."""
+    molds = [f for f in scan.get("fruits") or [] if f.get("label") == "mold"]
+    if not molds:
+        return None
+    try:
+        taken = clock(datetime.fromisoformat(scan["taken_at"]).timetz())
+    except Exception:
+        taken = "the latest scan"
+    count = "1 orange" if len(molds) == 1 else f"{len(molds)} oranges"
+    lines = [f"<b>Possible mold spotted</b> on {count} in the scan at {taken}. Remove "
+             f"{'it' if len(molds) == 1 else 'them'} before the mold spreads."]
+    if scan.get("demo"):
+        lines.append("<i>Demo data: the camera isn't connected yet, so this scan is an example.</i>")
+    photos = _mold_photos(scan, lambda rel: photo_path(data_dir, rel) is not None)
+    return Message("\n".join(lines), tuple(photos))
+
+
 async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     log.error("Error while handling an update", exc_info=context.error)
 
@@ -268,6 +338,8 @@ def build_application(config: Config) -> Application:
     app.add_handler(CommandHandler("water", handlers.water))
     app.add_handler(MessageHandler(filters.COMMAND, handlers.unknown))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.text))
+    app.add_handler(MessageHandler(filters.PHOTO, handlers.photo))
     app.add_error_handler(on_error)
     app.job_queue.run_daily(handlers.daily, time=config.daily_at, name="daily-message")
+    app.job_queue.run_repeating(handlers.watch_scans, interval=30, first=5, name="mold-alerts")
     return app
