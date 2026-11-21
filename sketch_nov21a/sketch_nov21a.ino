@@ -55,28 +55,23 @@ void loop() {
   float temperature = dht.readTemperature();
 
   if (isnan(humidity) || isnan(temperature)) {
-    Serial.println("Failed to read sensor");
-    delay(2000);
-    return;
+    //Serial.println("Failed to read sensor");
+    //delay(2000);
+  } else {
+    Serial.print("Temperature: ");
+    Serial.print(temperature);
+    Serial.println(" C");
+
+    Serial.print("Humidity: ");
+    Serial.print(humidity);
+    Serial.println(" %");
   }
 
-  Serial.print("Temperature: ");
-  Serial.print(temperature);
-  Serial.println(" C");
-
-  Serial.print("Humidity: ");
-  Serial.print(humidity);
-  Serial.println(" %");
 
   // Convert raw value to a 0% - 100% scale and constrain bounds
   int moisturePercent = map(rawValue, DRY_VALUE, WET_VALUE, 0, 100);
   moisturePercent = constrain(moisturePercent, 0, 100);
-
-  Serial.print("Raw: ");
-  Serial.print(rawValue);
-  Serial.print(" | Moisture: ");
-  Serial.print(moisturePercent);
-  Serial.println("%");
+  Serial.println(moisturePercent);
   if (moisturePercent > 50) {
     digitalWrite(ledPin, LOW);
   } else {
