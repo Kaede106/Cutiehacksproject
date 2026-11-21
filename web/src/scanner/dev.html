@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Scanner dev harness</title>
+    <style>
+      /* Plausible token values, copied from src/styles.css, with a dark set to check both. */
+      :root {
+        --cf-bg: #f3f6ee;
+        --cf-surface: #ffffff;
+        --cf-ink: #15301f;
+        --cf-ink-muted: #4a5e50;
+        --cf-line: #82978a;
+        --cf-accent: #f2871c;
+        --cf-accent-ink: #15301f;
+        --cf-unripe: #22501a;
+        --cf-ripening: #b08f00;
+        --cf-ripe: #bb3a0e;
+        --cf-mold: #2f5c9c;
+        --cf-font-body: ui-sans-serif, system-ui, sans-serif;
+        --cf-font-display: ui-sans-serif, system-ui, sans-serif;
+        --cf-radius-s: 6px;
+        --cf-radius-m: 16px;
+        --cf-focus: #1450c8;
+      }
+      :root[data-theme="dark"] {
+        --cf-bg: #0f1a13;
+        --cf-surface: #17251c;
+        --cf-ink: #e8efe6;
+        --cf-ink-muted: #a9b8ad;
+        --cf-line: #4b5f52;
+        --cf-unripe: #7fb35a;
+        --cf-ripening: #e0c040;
+        --cf-ripe: #f08a4b;
+        --cf-mold: #7aa7e6;
+        --cf-focus: #ffd84a;
+      }
+      body {
+        margin: 0;
+        padding: 24px 16px 48px;
+        background: var(--cf-bg);
+        color: var(--cf-ink);
+        font-family: var(--cf-font-body);
+      }
+      main { max-width: 1120px; margin: 0 auto; display: grid; gap: 16px; }
+      .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; }
+      .tools button { font: inherit; padding: 6px 10px; }
+      #log { font: 12px/1.5 ui-monospace, monospace; color: var(--cf-ink-muted); white-space: pre-wrap; max-height: 12rem; overflow: auto; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="tools">
+        <button type="button" id="theme">Toggle dark</button>
+        <button type="button" id="remount">Destroy and mount</button>
+        <button type="button" id="stress">Mount/destroy x25</button>
+        <span id="status"></span>
+      </div>
+      <div id="scanner-root"></div>
+      <pre id="log" aria-label="cutiefarm:reading events"></pre>
+    </main>
+    <script type="module">
+      import { mountScanner } from './index.js';
+
+      const root = document.getElementById('scanner-root');
+      const log = document.getElementById('log');
+      const status = document.getElementById('status');
+      let scanner = mountScanner(root);
+      window.__scanner = () => scanner;
+
+      root.addEventListener('cutiefarm:reading', (e) => {
+        log.textContent = `${new Date().toLocaleTimeString()} ${JSON.stringify(e.detail)}\n` + log.textContent.slice(0, 4000);
+      });
+      document.getElementById('theme').addEventListener('click', () => {
+        const html = document.documentElement;
+        html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
+      });
+      document.getElementById('remount').addEventListener('click', () => {
+        scanner.destroy();
+        scanner = mountScanner(root);
+      });
+      document.getElementById('stress').addEventListener('click', () => {
+        for (let i = 0; i < 25; i++) {
+          scanner.destroy();
+          scanner = mountScanner(root);
+        }
+        status.textContent = `children in root: ${root.children.length}`;
+      });
+    </script>
+  </body>
+</html>

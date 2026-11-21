@@ -1,0 +1,265 @@
+/* CutieFarm scanner. Styled only through the page's --cf-* tokens; every rule is scoped to .cf-scanner. */
+.cf-scanner {
+  --_bg: var(--cf-bg, #f3f6ee);
+  --_surface: var(--cf-surface, #ffffff);
+  --_ink: var(--cf-ink, #15301f);
+  --_muted: var(--cf-ink-muted, #4a5e50);
+  --_line: var(--cf-line, #82978a);
+  --_accent: var(--cf-accent, #f2871c);
+  --_accent-ink: var(--cf-accent-ink, #15301f);
+  --_unripe: var(--cf-unripe, #22501a);
+  --_ripening: var(--cf-ripening, #b08f00);
+  --_ripe: var(--cf-ripe, #bb3a0e);
+  --_mold: var(--cf-mold, #2f5c9c);
+  --_focus: var(--cf-focus, #1450c8);
+  --_r-s: var(--cf-radius-s, 6px);
+  --_r-m: var(--cf-radius-m, 16px);
+  --_font: var(--cf-font-body, ui-sans-serif, system-ui, sans-serif);
+  --_display: var(--cf-font-display, var(--_font));
+  --_ease: cubic-bezier(0.23, 1, 0.32, 1);
+
+  container: cf-scanner / inline-size;
+  color: var(--_ink);
+  font-family: var(--_font);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.cf-scanner *,
+.cf-scanner *::before,
+.cf-scanner *::after { box-sizing: border-box; }
+.cf-scanner [hidden] { display: none !important; }
+.cf-scanner p { margin: 0; }
+.cf-scanner ::selection { background: color-mix(in oklab, var(--_accent) 35%, transparent); }
+
+.cf-scanner__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Layout: stacked by default, two columns when the scanner itself is wide. */
+.cf-scanner__layout { display: grid; gap: 24px; }
+.cf-scanner__viewer { display: grid; gap: 12px; min-width: 0; }
+@container cf-scanner (min-width: 640px) {
+  .cf-scanner__layout { grid-template-columns: minmax(0, 1.6fr) minmax(15rem, 1fr); align-items: start; }
+}
+
+/* Stage: fixed 4:3, so states never shift the layout. */
+.cf-scanner__stage {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid var(--_line);
+  border-radius: var(--_r-m);
+  background: color-mix(in oklab, var(--_surface) 92%, var(--_ink));
+}
+.cf-scanner__media { position: absolute; inset: 0; }
+.cf-scanner__media.is-mirrored { transform: scaleX(-1); }
+.cf-scanner__frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The analysed square: 60% of the stage height, centred (matches centerRoi in classifier.js). */
+.cf-scanner__guide {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  height: 60%;
+  aspect-ratio: 1;
+  translate: -50% 0;
+  pointer-events: none;
+}
+.cf-scanner__corner {
+  position: absolute;
+  width: 18%;
+  height: 18%;
+  border: 0 solid var(--_surface);
+  filter: drop-shadow(0 1px 2px color-mix(in oklab, var(--_ink) 70%, transparent));
+}
+.cf-scanner__corner--tl { top: 0; left: 0; border-width: 3px 0 0 3px; border-top-left-radius: var(--_r-s); }
+.cf-scanner__corner--tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-top-right-radius: var(--_r-s); }
+.cf-scanner__corner--bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-bottom-left-radius: var(--_r-s); }
+.cf-scanner__corner--br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-bottom-right-radius: var(--_r-s); }
+.cf-scanner__regions { position: absolute; inset: 0; }
+.cf-scanner__region {
+  position: absolute;
+  border: 2px solid var(--_mold);
+  border-radius: var(--_r-s);
+  box-shadow: 0 0 0 1px var(--_surface), inset 0 0 0 1px var(--_surface);
+}
+
+/* Message panel over the stage for idle and camera problems. */
+.cf-scanner__panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 8px;
+  padding: clamp(16px, 6cqi, 40px);
+  background: color-mix(in oklab, var(--_surface) 92%, var(--_ink));
+}
+.cf-scanner__panel-title {
+  max-width: 30ch;
+  font-family: var(--_display);
+  font-size: clamp(1.0625rem, 3.2cqi, 1.375rem);
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+.cf-scanner__panel-title:focus { outline: none; }
+.cf-scanner__panel-body { max-width: 44ch; color: var(--_muted); font-size: 0.9375rem; }
+.cf-scanner__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+/* Buttons */
+.cf-scanner__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--_muted);
+  border-radius: 999px;
+  background: var(--_surface);
+  color: var(--_ink);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: transform 160ms var(--_ease), background-color 150ms ease-out, border-color 150ms ease-out;
+}
+.cf-scanner__btn--primary { border-color: var(--_accent); background: var(--_accent); color: var(--_accent-ink); }
+@media (hover: hover) and (pointer: fine) {
+  .cf-scanner__btn:hover { background: color-mix(in oklab, var(--_surface) 88%, var(--_ink)); }
+  .cf-scanner__btn--primary:hover { background: color-mix(in oklab, var(--_accent) 88%, var(--_ink)); }
+}
+.cf-scanner__btn:active { transform: scale(0.97); }
+.cf-scanner__btn:focus-visible,
+.cf-scanner__radio:focus-visible ~ .cf-scanner__thumb {
+  outline: 3px solid var(--_focus);
+  outline-offset: 2px;
+}
+
+/* Controls under the stage. Both bars sit in one grid cell, so the taller one sets the height. */
+.cf-scanner__controls { display: grid; }
+.cf-scanner__bar {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 12px;
+  visibility: hidden;
+}
+.cf-scanner__bar.is-active { visibility: visible; }
+.cf-scanner__bar--samples { align-items: flex-end; }
+.cf-scanner__bar-end { display: flex; align-items: center; min-height: 44px; }
+.cf-scanner__note { color: var(--_muted); font-size: 0.875rem; }
+
+.cf-scanner__picker { flex: 1 1 18rem; min-width: 0; margin: 0; padding: 0; border: 0; }
+.cf-scanner__legend { padding: 0; margin-bottom: 6px; font-size: 0.875rem; font-weight: 600; }
+.cf-scanner__options { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.cf-scanner__option { position: relative; display: grid; gap: 4px; cursor: pointer; }
+.cf-scanner__radio { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.cf-scanner__thumb {
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 2px solid var(--_line);
+  border-radius: var(--_r-s);
+  background: color-mix(in oklab, var(--_surface) 85%, var(--_ink));
+  transition: border-color 150ms ease-out, transform 160ms var(--_ease);
+}
+.cf-scanner__thumb canvas { display: block; width: 100%; height: 100%; }
+.cf-scanner__option:active .cf-scanner__thumb { transform: scale(0.97); }
+.cf-scanner__radio:checked ~ .cf-scanner__thumb { border-color: var(--_ink); box-shadow: 0 0 0 1px var(--_ink); }
+.cf-scanner__option-name { font-size: 0.8125rem; line-height: 1.25; color: var(--_muted); overflow-wrap: anywhere; }
+.cf-scanner__radio:checked ~ .cf-scanner__option-name { color: var(--_ink); font-weight: 600; }
+
+/* Reading */
+.cf-scanner__result {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--_line);
+  border-radius: var(--_r-m);
+  background: var(--_surface);
+}
+.cf-scanner__summary { display: grid; gap: 4px; min-height: 7.5rem; align-content: start; }
+.cf-scanner__title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--_display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.cf-scanner__swatch {
+  flex: none;
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 3px;
+  background: var(--_state, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--_ink) 25%, transparent);
+}
+.cf-scanner__result[data-label="empty"] .cf-scanner__title,
+.cf-scanner__result[data-label="none"] .cf-scanner__title { color: var(--_muted); }
+.cf-scanner__result[data-label="empty"] .cf-scanner__swatch,
+.cf-scanner__result[data-label="none"] .cf-scanner__swatch { display: none; }
+.cf-scanner__meta { color: var(--_muted); font-size: 0.9375rem; }
+.cf-scanner__advice { font-weight: 500; }
+
+.cf-scanner__result[data-label="unripe"],
+.cf-scanner__score[data-label="unripe"] { --_state: var(--_unripe); }
+.cf-scanner__result[data-label="ripening"],
+.cf-scanner__score[data-label="ripening"] { --_state: var(--_ripening); }
+.cf-scanner__result[data-label="ripe"],
+.cf-scanner__score[data-label="ripe"] { --_state: var(--_ripe); }
+.cf-scanner__result[data-label="mold"],
+.cf-scanner__score[data-label="mold"] { --_state: var(--_mold); }
+
+.cf-scanner__scores { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.cf-scanner__score {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  font-size: 0.875rem;
+  color: var(--_muted);
+}
+.cf-scanner__score[data-active] { color: var(--_ink); font-weight: 600; }
+.cf-scanner__track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--_line) 35%, var(--_surface));
+}
+.cf-scanner__fill {
+  display: block;
+  height: 100%;
+  background: var(--_state);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 220ms var(--_ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-scanner__fill,
+  .cf-scanner__btn,
+  .cf-scanner__thumb { transition: none; }
+  .cf-scanner__btn:active,
+  .cf-scanner__option:active .cf-scanner__thumb { transform: none; }
+}
