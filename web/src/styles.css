@@ -12,7 +12,6 @@
   --cf-unripe: #22501a;
   --cf-ripening: #b08f00;
   --cf-ripe: #bb3a0e;
-  --cf-mold: #2f5c9c;
   --cf-font-body: "Recursive", ui-sans-serif, system-ui, sans-serif;
   --cf-font-display: "Recursive", ui-sans-serif, system-ui, sans-serif;
   --cf-radius-s: 6px;
@@ -64,7 +63,7 @@ body {
   font-variation-settings: var(--linear);
   font-size: 1.125rem;
   line-height: 1.55;
-  caret-color: var(--cf-accent-edge);
+  caret-color: var(--accent-edge);
   overflow-x: clip;
 }
 
@@ -188,8 +187,11 @@ code {
   min-height: 44px;
   padding: 0 20px;
   font-size: 1.0625rem;
+  white-space: nowrap;
+  text-align: center;
 }
 @media (max-width: 519px) {
+  .masthead .button--small { padding-inline: 12px; }
   .masthead-link { display: none; }
 }
 .masthead-link {
@@ -207,15 +209,15 @@ code {
   overflow: hidden;
 }
 @media (max-width: 719px) {
-  .grove { height: clamp(260px, 80vw, 360px); }
+  .grove { height: clamp(260px, 72vw, 320px); }
 }
 
 .grove-art {
   display: block;
   width: 100%;
   height: 100%;
-  -webkit-mask-image: linear-gradient(to bottom, #000 86%, transparent);
-  mask-image: linear-gradient(to bottom, #000 86%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 94%, transparent);
+  mask-image: linear-gradient(to bottom, #000 94%, transparent);
 }
 
 .tag-text {
@@ -295,6 +297,10 @@ code {
   max-width: 15ch;
 }
 
+@media (max-width: 519px) {
+  .hero h1 { max-width: none; }
+}
+
 .hero-lead {
   font-size: 1.25rem;
   line-height: 1.5;
@@ -312,7 +318,7 @@ code {
   color: var(--canopy-muted);
 }
 
-/* Example of the planned 9:00 message: the payoff of the system. */
+/* Example 9:00 message */
 .daily {
   margin: 0;
   display: grid;
@@ -366,6 +372,7 @@ code {
   .hero-copy {
     grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
     column-gap: 64px;
+    padding-top: 24px;
   }
   .hero h1 { max-width: none; }
   .daily { justify-self: end; width: 100%; }
@@ -391,12 +398,15 @@ code {
 .states {
   display: grid;
   gap: 32px;
-  padding-block: clamp(64px, 9vw, 120px) clamp(48px, 7vw, 96px);
+  padding-block: clamp(48px, 7vw, 96px);
 }
 
 .states h2,
 .demo h2,
-.build h2 {
+.build h2,
+.telegram h2,
+.water h2,
+.why h2 {
   font-size: clamp(2rem, 1.4rem + 2vw, 3rem);
 }
 
@@ -582,30 +592,6 @@ code {
   line-height: 1.2;
 }
 
-.build-col p,
-.build-steps {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 16px;
-}
-.build-steps li {
-  position: relative;
-  padding-left: 24px;
-  text-wrap: pretty;
-}
-.build-steps li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.55em;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 1.5px solid var(--cf-ink-muted);
-}
-
 @media (min-width: 1000px) {
   .build {
     grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
@@ -690,39 +676,6 @@ code {
   }
 }
 
-/* Watering week: one row of days, the watering days marked with a drop. */
-.water-week { margin: 8px 0 0; display: grid; gap: 12px; }
-.water-week figcaption { font-weight: 600; }
-.week {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
-  max-width: 34rem;
-}
-.week li {
-  display: grid;
-  justify-items: center;
-  align-content: end;
-  gap: 6px;
-  min-height: 72px;
-  padding: 10px 4px;
-  border-radius: var(--cf-radius-s);
-  background: var(--cf-surface);
-  border: 1px solid var(--line-soft);
-  color: var(--cf-ink-muted);
-  font-size: 0.9375rem;
-}
-.week li.is-water {
-  background: color-mix(in srgb, var(--cf-mold) 12%, var(--cf-surface));
-  border-color: color-mix(in srgb, var(--cf-mold) 45%, transparent);
-  color: var(--cf-ink);
-  font-weight: 600;
-}
-.week .drop { width: 22px; height: 22px; fill: var(--cf-mold); }
-
 /* Why oranges: a short note, set apart from the two-column sections above. */
 @media (min-width: 1000px) {
   .why { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: left; }
@@ -750,20 +703,84 @@ code {
   white-space: nowrap;
 }
 
-/* Telegram call to action, under the example message. */
+/* ---------- Telegram examples ---------- */
+
+.telegram {
+  display: grid;
+  gap: 32px;
+  padding-block: clamp(48px, 7vw, 96px);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.telegram-intro {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.telegram-examples { margin: 0; min-width: 0; max-width: 42rem; }
+.telegram-examples figcaption { font-size: 1rem; color: var(--cf-ink-muted); }
+
+.telegram-thread {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.telegram-thread li {
+  display: grid;
+  gap: 8px;
+  padding-block: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.telegram-thread li:last-child { padding-bottom: 0; }
+.telegram-thread h3 { font-size: 1.25rem; }
+
+.telegram-thread p:not(.telegram-bubble) {
+  font-size: 1rem;
+  color: var(--cf-ink-muted);
+  max-width: 60ch;
+}
+
+.telegram-bubble {
+  justify-self: start;
+  padding: 8px 12px;
+  background: var(--cf-surface);
+  border-radius: var(--cf-radius-m) var(--cf-radius-m) var(--cf-radius-m) var(--cf-radius-s);
+  border: 1px solid var(--line-soft);
+  font-size: 1rem;
+}
+
+.telegram-bubble--grower {
+  justify-self: end;
+  background: var(--canopy-muted);
+  border-radius: var(--cf-radius-m) var(--cf-radius-m) var(--cf-radius-s) var(--cf-radius-m);
+}
+
 .tg-cta {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: center;
   gap: 12px 16px;
-  margin-top: 8px;
 }
+
 .tg-cta[hidden] { display: none; }
-.tg-cta .button { justify-self: start; }
+.tg-cta .button {
+  justify-self: start;
+  background: transparent;
+  color: var(--cf-ink);
+  border-color: var(--cf-line);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tg-cta .button:hover { background: var(--cf-surface); }
+}
+
 .tg-qr {
   width: 104px;
   padding: 6px;
-  background: #fff;
+  background: var(--cf-surface);
   border-radius: var(--cf-radius-s);
 }
 .tg-qr svg { display: block; width: 100%; height: auto; }
@@ -771,24 +788,20 @@ code {
   grid-column: 1 / -1;
   font-size: 1rem;
   line-height: 1.45;
-  color: var(--canopy-muted);
+  color: var(--cf-ink-muted);
 }
-/* On a phone the link opens Telegram directly, so the QR code only helps on bigger screens. */
+
 @media (max-width: 719px) {
   .tg-cta { grid-template-columns: 1fr; }
   .tg-qr { display: none; }
 }
-/* Secondary to "Scan an orange": an outline button on the dark hero. */
-.tg-cta .button {
-  background: transparent;
-  color: var(--canopy-ink);
-  border: 2px solid var(--canopy-ink);
-  white-space: nowrap;
-}
-@media (hover: hover) and (pointer: fine) {
-  .tg-cta .button:hover { background: rgb(255 255 255 / 0.08); }
-}
 
+@media (min-width: 1000px) {
+  .telegram {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    column-gap: 48px;
+  }
+}
 /* ---------- Watering simulator ---------- */
 
 #water-title { scroll-margin-top: 24px; }

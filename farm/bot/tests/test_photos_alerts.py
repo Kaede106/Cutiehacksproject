@@ -6,9 +6,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 from PIL import Image, ImageDraw
+from telegram.error import Forbidden
 
 from farm.bot import photo
-from farm.bot.app import MAX_PHOTO_BYTES, mold_alert
+from farm.bot.app import MAX_PHOTO_BYTES
 from farm.bot.photo import classify_photo, photo_reply
 from farm.common import store
 
@@ -34,7 +35,10 @@ def jpeg(fill, bg=(40, 90, 50), spots=()):
 def test_classify_photo_labels():
     assert classify_photo(jpeg((240, 130, 20))).label == "ripe"
     assert classify_photo(jpeg((110, 160, 50), bg=(200, 200, 200))).label == "unripe"
-    assert classify_photo(jpeg((235, 130, 35), spots=[(330, 245, 30), (260, 265, 18)])).label == "mold"
+    assert classify_photo(jpeg((222, 195, 35), bg=(200, 200, 200))).label == "ripening"
+    spotted = classify_photo(jpeg((235, 130, 35), spots=[(330, 245, 30), (260, 265, 18)]))
+    assert spotted.label == "ripe"
+    assert set(spotted.scores) == set(store.LABELS)
     assert classify_photo(jpeg((128, 128, 128), bg=(128, 128, 128))).label == "none"
 
 
@@ -103,54 +107,101 @@ def test_photo_handler_rejects_oversize_photos(data, file_size):
     assert "5 MB" in u.effective_message.reply_text.await_args.args[0]
 
 
-def scan(scan_id, labels, demo=False):
+def scan(scan_id, ripe, **extra):
     return {"id": scan_id, "taken_at": "2026-11-21T14:05:00-08:00", "source": "webcam", "model": "m",
-            "image": None, "demo": demo,
-            "fruits": [{"id": i, "label": l, "confidence": "high", "crop": None} for i, l in enumerate(labels, 1)]}
+            "fruits": [{"label": "ripe"} for _ in range(ripe)], **extra}
 
 
-def test_mold_alert_text(data):
-    msg = mold_alert(scan("a", ["ripe", "mold"], demo=True), data)
-    assert "Possible mold spotted</b> on 1 orange in the scan at 2:05 PM" in msg.text
-    assert "Demo data" in msg.text
-    assert mold_alert(scan("b", ["ripe"]), data) is None
+def subscribed(data):
+    h = handlers(data)
+    h.state.subscribe(11, datetime.now().astimezone())
+    return h
 
 
-def test_mold_alert_skips_non_dict_fruit(data):
-    record = scan("a", ["mold"])
-    record["fruits"] += [None, 1]
-    record["fruits"][0]["confidence"] = []
-    assert "on 1 orange" in mold_alert(record, data).text
+def test_watch_scans_is_quiet_at_startup(data):
+    store.append_scan(scan("older", 1))
+    store.append_scan(scan("at-startup", 3))
+    h, ctx = subscribed(data), context()
+    run(h.watch_scans(ctx))
+    ctx.bot.send_message.assert_not_called()
+
+
+def test_ripe_increase_alerts_once_per_scan(data):
+    h, ctx = subscribed(data), context()
+    store.append_scan(scan("first", 3))
+    run(h.watch_scans(ctx))
+    store.append_scan(scan("second", 5, demo=True))
+    run(h.watch_scans(ctx))
+    run(h.watch_scans(ctx))
+    ctx.bot.send_message.assert_awaited_once()
+    chat_id, message = ctx.bot.send_message.await_args.args
+    assert chat_id == 11
+    assert "2 more oranges are ready to pick (5 in total)" in message
+    assert "Demo data" in message
+
+
+def test_no_alert_until_ripe_count_increases_again(data):
+    h, ctx = subscribed(data), context()
+    store.append_scan(scan("first", 3))
+    run(h.watch_scans(ctx))
+    store.append_scan(scan("same", 3))
+    store.append_scan(scan("fewer", 1))
+    run(h.watch_scans(ctx))
+    ctx.bot.send_message.assert_not_called()
+
+    store.append_scan(scan("more", 2))
+    store.append_scan(scan("equal", 2))
+    run(h.watch_scans(ctx))
+    ctx.bot.send_message.assert_awaited_once()
+    assert "1 more orange is ready to pick (2 in total)" in ctx.bot.send_message.await_args.args[1]
+
+
+@pytest.mark.parametrize("image", ["scans/whole.jpg", "scans/missing.jpg", "../private.jpg", None])
+def test_alert_attaches_only_an_existing_scan_image(data, image):
+    (data / "scans").mkdir()
+    whole = data / "scans" / "whole.jpg"
+    whole.write_bytes(b"\xff\xd8")
+    (data / "scans" / "crop.jpg").write_bytes(b"\xff\xd8")
+    (data.parent / "private.jpg").write_bytes(b"\xff\xd8")
+    h, ctx = subscribed(data), context()
+    store.append_scan(scan("first", 0))
+    run(h.watch_scans(ctx))
+    newer = scan("second", 1, image=image)
+    newer["fruits"].extend([{"label": "mold", "crop": "scans/crop.jpg"}, None])
+    store._append(store.SCANS_FILE, newer)
+    run(h.watch_scans(ctx))
+    ctx.bot.send_message.assert_awaited_once()
+    if image == "scans/whole.jpg":
+        ctx.bot.send_photo.assert_awaited_once()
+        assert ctx.bot.send_photo.await_args.kwargs["photo"] == whole.resolve()
+    else:
+        ctx.bot.send_photo.assert_not_called()
+
+
+def test_ripe_alert_unsubscribes_blocked_chats_and_continues(data, caplog):
+    h, ctx = subscribed(data), context()
+    for chat_id in (12, 13):
+        h.state.subscribe(chat_id, datetime.now().astimezone())
+    store.append_scan(scan("first", 0))
+    run(h.watch_scans(ctx))
+    store.append_scan(scan("second", 1))
+    ctx.bot.send_message.side_effect = [Forbidden("blocked"), RuntimeError("failed"), None]
+    run(h.watch_scans(ctx))
+    assert [call.args[0] for call in ctx.bot.send_message.await_args_list] == [11, 12, 13]
+    assert h.state.chats() == [12, 13]
+    assert "Could not send the ripe alert to chat 12" in caplog.text
 
 
 def test_watch_scans_catches_alert_processing_failure(data, monkeypatch, caplog):
-    h, ctx = handlers(data), context()
-    store.append_scan(scan("first", ["ripe"]))
+    h, ctx = subscribed(data), context()
+    store.append_scan(scan("first", 1))
     run(h.watch_scans(ctx))
-    store.append_scan(scan("second", ["mold"]))
+    store.append_scan(scan("second", 2))
 
     def bad_alert(*args):
         raise ValueError("malformed scan")
 
-    monkeypatch.setattr("farm.bot.app.mold_alert", bad_alert)
+    monkeypatch.setattr("farm.bot.app.ripe_alert", bad_alert)
     run(h.watch_scans(ctx))
-    assert "Could not check the latest scan" in caplog.text
+    assert "Could not check scans for ripe alerts" in caplog.text
     ctx.bot.send_message.assert_not_called()
-
-
-def test_watch_scans_alerts_only_on_new_mold_scans(data):
-    h = handlers(data)
-    h.state.subscribe(11, datetime.now().astimezone())
-    store.append_scan(scan("first", ["mold"]))
-    ctx = context()
-    run(h.watch_scans(ctx))                      # baseline: no alert for what was already there
-    ctx.bot.send_message.assert_not_called()
-    store.append_scan(scan("second", ["ripe"]))
-    run(h.watch_scans(ctx))                      # new scan, no mold: nothing
-    ctx.bot.send_message.assert_not_called()
-    store.append_scan(scan("third", ["mold", "mold"]))
-    run(h.watch_scans(ctx))                      # new scan with mold: alert
-    assert ctx.bot.send_message.call_args.args[0] == 11
-    assert "2 oranges" in ctx.bot.send_message.call_args.args[1]
-    run(h.watch_scans(ctx))                      # same scan again: no repeat
-    assert ctx.bot.send_message.call_count == 1

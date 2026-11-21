@@ -2,7 +2,7 @@
 
 Two layers:
 - A keyword matcher (English and Spanish) that always works: it maps "status", "water",
-  "mold"... to the same answers as the commands.
+  "ready to pick"... to the same answers as the commands.
 - When OPENAI_API_KEY is set, an OpenAI model answers anything else in the grower's own
   language, using ONLY the latest scan, sensor readings and watering advice as context.
 
@@ -38,17 +38,17 @@ HISTORY_TURNS = 6
 LIMITS_FILE = "bot_limits.json"
 LIMIT_NOTICE = "That's all the questions I can answer today. /status and /water still work."
 
-LABEL_TEXT = {"unripe": "unripe", "ripening": "ripening", "ripe": "ready to pick", "mold": "possible mold"}
+LABEL_TEXT = {"unripe": "unripe", "ripening": "ripening", "ripe": "ready to pick"}
 
 SYSTEM_PROMPT = """You are CutieFarm, a small assistant that looks after an orange grove.
-A camera labels each orange (unripe, ripening, ready to pick, possible mold) and sensors read the soil, temperature, humidity and wind.
+A camera labels each orange (unripe, ripening, ready to pick) and sensors read the soil, temperature, humidity and wind.
 Answer the grower's question using ONLY the farm data below. Rules:
 - Reply in the same language the grower writes in. Be short: one to four sentences, plain text, no Markdown.
 - Never invent oranges, numbers, dates, positions or readings that are not in the data. If the data can't answer, say so plainly and suggest /status or /water.
 - Positions (left, centre, right, top, bottom) refer to where each orange appears in the camera picture.
 - If the data is marked as demo or simulated, mention that once when it matters.
 - Watering advice is a rule of thumb, not agronomic certainty.
-- For anything unrelated to the grove, say briefly that you only know about this grove.
+- For any request outside orange ripeness and grove watering, say briefly that CutieFarm only checks ripeness and watering.
 
 FARM DATA
 {context}"""
@@ -64,7 +64,7 @@ def _norm(text: str) -> str:
 _INTENTS = [
     ("water", r"\b(water|watering|irrigat\w*|regar|riego|riega\w*|agua)\b"),
     ("status", r"\b(status|estado|today|hoy|naranj\w*|orange\w*|pick\w*|recog\w*|cosech\w*|harvest\w*|"
-               r"madur\w*|ripe\w*|ready|listas?|mold\w*|moho|hongos?|fung\w*|resumen|summary)\b"),
+               r"madur\w*|ripe\w*|ready|listas?|resumen|summary)\b"),
     ("help", r"\b(help|ayuda|hola|hello|hi|hey|buenas|que (puedes|sabes) hacer|what can you do)\b"),
 ]
 
@@ -125,12 +125,12 @@ def farm_context(scan: Mapping[str, Any] | None, sensors: Mapping[str, Any] | No
         lines.append(f"Latest scan: {taken}." + (f" ({'; '.join(flags)})" if flags else ""))
         summary = _counts(scan)
         lines.append("Counts: " + ", ".join(f"{summary[k]} {LABEL_TEXT[k]}" for k in LABEL_TEXT) + ".")
-        fruits = _fruits(scan)
+        fruits = [f for f in _fruits(scan) if str(f.get("label")) in LABEL_TEXT]
         pos = _positions(fruits)
         for f in fruits:
             fid, label = f.get("id"), str(f.get("label"))
             where = f", {pos[fid]} of the picture" if type(fid) is int and fid in pos else ""
-            lines.append(f"- Orange {fid}: {LABEL_TEXT.get(label, label)}"
+            lines.append(f"- Orange {fid}: {LABEL_TEXT[label]}"
                          f" ({f.get('confidence', 'unknown')} confidence){where}.")
     if sensors:
         sim = " (SIMULATED, not real readings)" if sensors.get("simulated") else ""

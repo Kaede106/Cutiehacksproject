@@ -29,9 +29,10 @@ def test_preview_every_fixture(name, capsys):
 
 
 def test_preview_html(capsys):
-    assert cli.main(["preview", "--fixture", "mold", "--html"]) == 0
-    assert "<b>3 ready to pick, 5 ripening, 1 possible mold (photo attached): remove it today.</b>" in \
-        capsys.readouterr().out
+    assert cli.main(["preview", "--fixture", "pick-and-water", "--html"]) == 0
+    out = capsys.readouterr().out
+    assert "<b>3 ready to pick today, 5 ripening. Check again in a few days.</b>" in out
+    assert "Watering (simulated sensors):" in out
 
 
 def test_preview_data_folder(tmp_path, monkeypatch, capsys):
@@ -39,8 +40,7 @@ def test_preview_data_folder(tmp_path, monkeypatch, capsys):
     folder.mkdir()
     monkeypatch.setenv("CUTIEFARM_DATA", str(folder))
     store.append_scan({"id": "a", "source": "webcam", "model": "color-heuristic-v1", "image": "scans/a.jpg",
-                       "fruits": [{"id": 1, "label": "unripe", "confidence": "high", "bbox": [0, 0, 1, 1],
-                                   "crop": None}]})
+                       "fruits": [{"id": 1, "label": "unripe", "confidence": "high", "bbox": [0, 0, 1, 1]}]})
     monkeypatch.setenv("CUTIEFARM_DATA", str(tmp_path / "elsewhere"))
     assert cli.main(["preview", "--data", str(folder)]) == 0
     out = capsys.readouterr().out

@@ -36,7 +36,6 @@ def _parser() -> argparse.ArgumentParser:
 def preview(args: argparse.Namespace) -> int:
     from farm.common import store
 
-    from .access import photo_path
     from .app import build_message, water_advice
     from .compose import Message, compose, to_plain
     from .irrigation import advise, water_message
@@ -51,7 +50,6 @@ def preview(args: argparse.Namespace) -> int:
         else:
             message = compose(fx.scan, fx.sensors, now, scan_command=config.scan_command, irrigation=advice)
         header = f"Fixture {args.fixture!r} (made-up data, not from the grove)"
-        data = None
     else:
         if args.data:
             if not args.data.is_dir():
@@ -68,10 +66,6 @@ def preview(args: argparse.Namespace) -> int:
     out = message.text if args.html else to_plain(message.text)
     print(f"--- {header}, {now:%Y-%m-%d %H:%M %Z} ---")
     print(out)
-    for photo in message.photos:
-        where = "(fixture, no real file)" if data is None else str(photo_path(data, photo.path))
-        caption = photo.caption if args.html else to_plain(photo.caption)
-        print(f"[photo] {photo.path}  {where}\n        {caption}")
     return 0
 
 

@@ -20,8 +20,12 @@ def run(coro):
     ("¿Riego mañana?", "water"),
     ("when should I water", "water"),
     ("¿Cuántas naranjas están listas?", "status"),
-    ("any mold today?", "status"),
-    ("hay hongos?", "status"),
+    ("ready to pick?", "status"),
+    ("are they ripe?", "status"),
+    ("¿maduras y listas para recoger?", "status"),
+    ("any mold?", None),
+    ("hay hongos?", None),
+    ("¿hay moho?", None),
     ("hola", "help"),
     ("Y las de la izquierda?", None),
     ("tell me a joke", None),
@@ -44,13 +48,15 @@ def test_positions_skip_missing_ids_and_invalid_coordinates():
 
 def test_context_marks_demo_and_simulated_data():
     scan = {"taken_at": "2026-11-21T10:00:00-08:00", "demo": True, "model": "color-heuristic-v1",
-            "summary": {"ripe": 1, "mold": 1},
+            "summary": {"ripe": 1, "ripening": 1, "mold": 1},
             "fruits": [{"id": 1, "label": "ripe", "confidence": "high", "bbox": [0, 0, 10, 10]},
-                       {"id": 2, "label": "mold", "confidence": "medium", "bbox": [90, 0, 10, 10]}]}
+                       {"id": 2, "label": "ripening", "confidence": "medium", "bbox": [90, 0, 10, 10]},
+                       {"id": 3, "label": "mold", "crop": "scans/legacy.jpg"}]}
     sensors = {"taken_at": "x", "simulated": True, "soil_moisture_pct": 40, "wind_ms": None}
     text = farm_context(scan, sensors, "Water on Thursday.", NOW)
     assert "DEMO DATA" in text and "SIMULATED" in text
-    assert "Orange 2: possible mold (medium confidence), middle right of the picture." in text
+    assert "mold" not in text and "Orange 3" not in text
+    assert "Orange 2: ripening (medium confidence), middle right of the picture." in text
     assert "wind" not in text  # null sensors are left out
     assert "Water on Thursday." in text
 
@@ -136,7 +142,7 @@ def test_conversation_sends_context_and_keeps_history():
 
     conv = Conversation(env={"OPENAI_API_KEY": "sk-test"}, client=_client(handler))
     assert run(conv.reply(7, "¿Y las de la izquierda?", "FACTS-123", NOW.date())) == "Las de la izquierda están verdes."
-    run(conv.reply(7, "¿y la del hongo?", "FACTS-123", NOW.date()))
+    run(conv.reply(7, "¿y la de la izquierda?", "FACTS-123", NOW.date()))
     body = seen[-1]
     assert body["model"] == "gpt-6-luna"
     assert "FACTS-123" in body["messages"][0]["content"]
