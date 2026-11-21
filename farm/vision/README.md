@@ -6,7 +6,7 @@ From the repository root, activate the shared bot virtual environment or use its
 python -m pip install -r farm/bot/requirements.txt
 ```
 
-The OpenCV pin has a Windows x64 wheel compatible with Python 3.14. The runner reads `CUTIEFARM_DATA` from the environment or `farm/bot/.env` and defaults to `farm/data`. Set a separate folder when testing so the running demo keeps its own data.
+The OpenCV and Ultralytics dependencies were installed in the shared Windows x64 Python 3.14 environment. The runner reads `CUTIEFARM_DATA` from the environment or `farm/bot/.env` and defaults to `farm/data`. Set a separate folder when testing so the running demo keeps its own data.
 
 ```powershell
 $env:CUTIEFARM_DATA = Join-Path $env:TEMP "cutiefarm-vision-test"
