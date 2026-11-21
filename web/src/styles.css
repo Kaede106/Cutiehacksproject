@@ -1,0 +1,790 @@
+/* Page styles. The scanner (src/scanner/) styles itself only through the --cf-* tokens below. */
+
+:root {
+  /* Contract tokens (see PRODUCT.md). Light only: the page is used in bright halls. */
+  --cf-bg: #f3f6ee;
+  --cf-surface: #ffffff;
+  --cf-ink: #15301f;
+  --cf-ink-muted: #4a5e50;
+  --cf-line: #82978a;
+  --cf-accent: #f2871c;
+  --cf-accent-ink: #15301f;
+  --cf-unripe: #22501a;
+  --cf-ripening: #b08f00;
+  --cf-ripe: #bb3a0e;
+  --cf-mold: #2f5c9c;
+  --cf-font-body: "Recursive", ui-sans-serif, system-ui, sans-serif;
+  --cf-font-display: "Recursive", ui-sans-serif, system-ui, sans-serif;
+  --cf-radius-s: 6px;
+  --cf-radius-m: 16px;
+  --cf-focus: #1450c8;
+
+  /* Page-only tokens */
+  --canopy: #1f5a35;
+  --canopy-deep: #17462a;
+  --canopy-ink: #f7faf3;
+  --canopy-muted: #c9dccb;
+  --accent-edge: #b85a00;
+  --line-soft: #d5ded3;
+  --casual: "CASL" 1;
+  --linear: "CASL" 0;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --gutter: 16px;
+  --wrap: 1240px;
+
+  color-scheme: light;
+}
+
+@media (min-width: 720px) {
+  :root { --gutter: 32px; }
+}
+@media (min-width: 1100px) {
+  :root { --gutter: 48px; }
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scrollbar-color: var(--cf-line) var(--cf-bg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+body {
+  margin: 0;
+  background: var(--cf-bg);
+  color: var(--cf-ink);
+  font-family: var(--cf-font-body);
+  font-variation-settings: var(--linear);
+  font-size: 1.125rem;
+  line-height: 1.55;
+  caret-color: var(--cf-accent-edge);
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--cf-accent);
+  color: var(--cf-accent-ink);
+}
+
+h1, h2, h3 {
+  font-family: var(--cf-font-display);
+  font-variation-settings: var(--casual);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  margin: 0;
+}
+
+p { margin: 0; text-wrap: pretty; }
+
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+:focus-visible {
+  outline: 3px solid var(--cf-focus);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.wrap {
+  width: 100%;
+  max-width: calc(var(--wrap) + 2 * var(--gutter));
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--gutter);
+  top: 12px;
+  z-index: 10;
+  padding: 10px 16px;
+  border-radius: var(--cf-radius-s);
+  background: var(--cf-surface);
+  color: var(--cf-ink);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+.skip-link:focus-visible { transform: none; }
+
+/* ---------- Buttons ---------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 0 24px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-edge);
+  background: var(--cf-accent);
+  color: var(--cf-accent-ink);
+  font-family: var(--cf-font-display);
+  font-variation-settings: var(--casual);
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 160ms var(--ease-out), background-color 160ms ease;
+}
+.button:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) {
+  .button:hover { background: #f79a3a; }
+}
+
+/* ---------- Hero: the canopy ---------- */
+
+.hero {
+  --cf-focus: #ffd84a;
+  position: relative;
+  background: var(--canopy);
+  color: var(--canopy-ink);
+  padding-bottom: clamp(40px, 6vw, 72px);
+}
+.hero--top { padding-bottom: 0; }
+
+.masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 68px;
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--cf-font-display);
+  font-variation-settings: var(--casual);
+  font-size: 1.3125rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.wordmark-mark { width: 30px; height: 30px; flex: none; }
+
+.masthead-nav {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.button--small {
+  min-height: 44px;
+  padding: 0 20px;
+  font-size: 1.0625rem;
+}
+@media (max-width: 519px) {
+  .masthead-link { display: none; }
+}
+.masthead-link {
+  font-size: 1rem;
+  color: var(--canopy-muted);
+  padding: 8px 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .masthead-link:hover { color: var(--canopy-ink); }
+}
+
+.grove {
+  position: relative;
+  height: clamp(300px, 26vw, 400px);
+  overflow: hidden;
+}
+@media (max-width: 719px) {
+  .grove { height: clamp(260px, 80vw, 360px); }
+}
+
+.grove-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-mask-image: linear-gradient(to bottom, #000 86%, transparent);
+  mask-image: linear-gradient(to bottom, #000 86%, transparent);
+}
+
+.tag-text {
+  font-family: var(--cf-font-body);
+  font-variation-settings: var(--linear);
+  font-weight: 600;
+  fill: var(--cf-ink);
+}
+
+.grove-veil,
+.grove-scanline {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.grove-veil {
+  -webkit-backdrop-filter: grayscale(1) brightness(0.82);
+  backdrop-filter: grayscale(1) brightness(0.82);
+}
+
+.grove-scanline::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: #e9f6d6;
+}
+
+/* The one authored moment: a single pass of the camera. Content is in its final state by default;
+   main.js adds .is-scanning only when motion is allowed. */
+.grove.is-scanning .grove-veil {
+  visibility: visible;
+  animation: veil-sweep var(--sweep, 2200ms) linear var(--sweep-delay, 350ms) both;
+}
+.grove.is-scanning .grove-scanline {
+  visibility: visible;
+  animation: line-sweep var(--sweep, 2200ms) linear var(--sweep-delay, 350ms) both;
+}
+.grove.is-scanning .mark {
+  animation: mark-in 320ms var(--ease-out) both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes veil-sweep {
+  from { clip-path: inset(0 0 0 0); }
+  to { clip-path: inset(0 0 0 100%); }
+}
+@keyframes line-sweep {
+  0% { transform: translateX(0); opacity: 1; }
+  92% { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+@keyframes mark-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+
+.hero-copy {
+  display: grid;
+  gap: 48px;
+  padding-top: clamp(24px, 3vw, 40px);
+}
+
+.hero-main {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
+.hero h1 {
+  font-size: clamp(2.375rem, 1.1rem + 3vw, 3.5rem);
+  max-width: 15ch;
+}
+
+.hero-lead {
+  font-size: 1.25rem;
+  line-height: 1.5;
+  max-width: 36rem;
+}
+
+.hero-actions {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+}
+
+.hero-note {
+  font-size: 1rem;
+  color: var(--canopy-muted);
+}
+
+/* Example of the planned 9:00 message: the payoff of the system. */
+.daily {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+  max-width: 26rem;
+  align-content: start;
+}
+
+.daily-caption,
+.daily-privacy {
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--canopy-muted);
+}
+.daily-caption { font-weight: 600; color: var(--canopy-ink); }
+
+.daily-msg {
+  display: grid;
+  gap: 12px;
+  padding: 8px 8px 12px;
+  background: var(--canopy-ink);
+  color: var(--cf-ink);
+  border-radius: 20px 20px 20px 6px;
+  box-shadow: 0 1px 2px rgb(6 24 12 / 0.25);
+}
+
+.daily-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+}
+
+.daily-text {
+  padding-inline: 8px;
+  font-size: 1.25rem;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.daily-time {
+  padding-inline: 8px;
+  margin-top: -4px;
+  text-align: right;
+  font-size: 0.875rem;
+  color: var(--cf-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 1000px) {
+  .hero-copy {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    column-gap: 64px;
+  }
+  .hero h1 { max-width: none; }
+  .daily { justify-self: end; width: 100%; }
+}
+
+/* The message's entrance only plays where it shares the first screen with the grove. */
+@media (min-width: 1000px) {
+  .hero.is-scanning .daily-msg {
+    animation: msg-in 420ms var(--ease-out) calc(var(--sweep-delay) + var(--sweep) - 200ms) both;
+  }
+  .cf-motion .hero:not(.is-scanning) .daily-msg { opacity: 0; }
+}
+/* Starting state, set before first paint by the inline script in index.html. */
+.cf-motion .grove:not(.is-scanned) .grove-veil { visibility: visible; }
+.cf-motion .grove:not(.is-scanning) .mark { opacity: 0; }
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- States table ---------- */
+
+.states {
+  display: grid;
+  gap: 32px;
+  padding-block: clamp(64px, 9vw, 120px) clamp(48px, 7vw, 96px);
+}
+
+.states h2,
+.demo h2,
+.build h2 {
+  font-size: clamp(2rem, 1.4rem + 2vw, 3rem);
+}
+
+.states-intro {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.states-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.states-table thead th {
+  text-align: left;
+  font-family: var(--cf-font-body);
+  font-variation-settings: var(--linear);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--cf-ink-muted);
+  padding: 0 16px 12px 0;
+  border-bottom: 1px solid var(--cf-line);
+}
+
+.states-table tbody th,
+.states-table td {
+  text-align: left;
+  vertical-align: middle;
+  padding: 16px 16px 16px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.states-table tbody th { font-weight: 600; }
+
+.state-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.1875rem;
+  white-space: nowrap;
+}
+
+.state-fruit {
+  width: 64px;
+  height: 64px;
+  flex: none;
+}
+
+.states-table td { color: var(--cf-ink-muted); }
+
+.states-table .state-action {
+  font-family: var(--cf-font-display);
+  font-variation-settings: var(--casual);
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--cf-ink);
+}
+
+@media (min-width: 1000px) {
+  .states {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    column-gap: 48px;
+  }
+  .states-table td:nth-child(2) { width: 36%; }
+}
+
+@media (max-width: 719px) {
+  .states-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .states-table,
+  .states-table tbody,
+  .states-table tr,
+  .states-table tbody th,
+  .states-table td { display: block; }
+  .states-table tr {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    column-gap: 16px;
+    padding-block: 20px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .states-table tr:first-child { border-top: 1px solid var(--cf-line); }
+  .states-table tbody th,
+  .states-table td { padding: 0; border: 0; }
+  .states-table tbody th { display: contents; }
+  .state-name { display: contents; }
+  .state-name .state-fruit { grid-row: 1 / span 3; grid-column: 1; }
+  .states-table td { grid-column: 2; }
+  .states-table .state-action { margin-top: 4px; }
+}
+
+/* ---------- Demo ---------- */
+
+.demo {
+  background: var(--cf-surface);
+  border-block: 1px solid var(--line-soft);
+  padding-block: clamp(56px, 8vw, 112px);
+  scroll-margin-top: 0;
+}
+
+.demo-inner {
+  display: grid;
+  gap: 32px;
+}
+
+.demo h2 { scroll-margin-top: 24px; }
+.demo h2:focus { outline: none; }
+
+.demo-copy {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  max-width: 34rem;
+}
+
+.demo-copy p { color: var(--cf-ink-muted); }
+
+.viewfinder {
+  padding: 20px;
+  background: var(--cf-bg);
+  border-radius: var(--cf-radius-m);
+}
+
+#scanner-root { min-height: 320px; }
+
+@media (max-width: 719px) {
+  .viewfinder { padding: 12px; }
+}
+
+@media (min-width: 1000px) {
+  .demo-inner {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    column-gap: 48px;
+    align-items: start;
+  }
+  .demo-copy { position: sticky; top: 32px; }
+}
+
+/* ---------- How it's built ---------- */
+
+.build {
+  display: grid;
+  gap: 32px;
+  padding-block: clamp(64px, 9vw, 120px);
+}
+
+.build-body {
+  display: grid;
+  gap: 48px;
+}
+
+.build-cols {
+  display: grid;
+  gap: 40px;
+}
+
+.build-board {
+  display: grid;
+  gap: 12px;
+  max-width: 44rem;
+  padding-top: 32px;
+  border-top: 1px solid var(--line-soft);
+}
+.build-board p { color: var(--cf-ink-muted); }
+
+.build-col {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  max-width: 36rem;
+}
+
+.build h3 {
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.build-col p,
+.build-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+}
+.build-steps li {
+  position: relative;
+  padding-left: 24px;
+  text-wrap: pretty;
+}
+.build-steps li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--cf-ink-muted);
+}
+
+@media (min-width: 1000px) {
+  .build {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    column-gap: 48px;
+  }
+  .build-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 48px;
+  }
+}
+
+/* ---------- Footer ---------- */
+
+.site-footer {
+  --cf-focus: #ffd84a;
+  background: var(--canopy);
+  color: var(--canopy-muted);
+  font-size: 1rem;
+}
+
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 32px;
+  padding-block: 32px;
+}
+
+.footer-name {
+  color: var(--canopy-ink);
+  font-family: var(--cf-font-display);
+  font-variation-settings: var(--casual);
+  font-weight: 700;
+}
+
+.site-footer a { color: var(--canopy-ink); padding-block: 8px; }
+
+/* ---------- Reduced motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .button { transition: background-color 160ms ease; }
+  .button:active { transform: none; }
+}
+
+.grove.is-scanned .grove-veil,
+.grove.is-scanned .grove-scanline { display: none; }
+
+/* ---------- Watering ---------- */
+
+.water,
+.why {
+  display: grid;
+  gap: 24px;
+  padding-block: clamp(56px, 8vw, 104px);
+}
+.water { border-top: 1px solid var(--line-soft); }
+.water-body,
+.why-body {
+  display: grid;
+  gap: 16px;
+  max-width: 40rem;
+}
+.water-note { color: var(--cf-ink-muted); }
+
+/* ---------- Why oranges: the team's own voice ---------- */
+
+.why { border-top: 1px solid var(--line-soft); }
+.why-body p:first-child {
+  font-family: var(--cf-font-display);
+  font-variation-settings: var(--casual);
+  font-size: clamp(1.375rem, 1rem + 1vw, 1.75rem);
+  line-height: 1.35;
+}
+
+@media (min-width: 1000px) {
+  .water,
+  .why {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    column-gap: 48px;
+    align-items: start;
+  }
+}
+
+/* Watering week: one row of days, the watering days marked with a drop. */
+.water-week { margin: 8px 0 0; display: grid; gap: 12px; }
+.water-week figcaption { font-weight: 600; }
+.week {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 34rem;
+}
+.week li {
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  gap: 6px;
+  min-height: 72px;
+  padding: 10px 4px;
+  border-radius: var(--cf-radius-s);
+  background: var(--cf-surface);
+  border: 1px solid var(--line-soft);
+  color: var(--cf-ink-muted);
+  font-size: 0.9375rem;
+}
+.week li.is-water {
+  background: color-mix(in srgb, var(--cf-mold) 12%, var(--cf-surface));
+  border-color: color-mix(in srgb, var(--cf-mold) 45%, transparent);
+  color: var(--cf-ink);
+  font-weight: 600;
+}
+.week .drop { width: 22px; height: 22px; fill: var(--cf-mold); }
+
+/* Why oranges: a short note, set apart from the two-column sections above. */
+@media (min-width: 1000px) {
+  .why { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: left; }
+  .why > h2, .why-body { width: min(100%, 40rem); }
+}
+.why-sign {
+  font-family: var(--cf-font-display);
+  font-variation-settings: var(--casual);
+  font-weight: 600;
+  color: var(--cf-ink-muted);
+  transform: rotate(-1.5deg);
+  transform-origin: left center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .why-sign { transform: none; }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Telegram call to action, under the example message. */
+.tg-cta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px 16px;
+  margin-top: 8px;
+}
+.tg-cta[hidden] { display: none; }
+.tg-cta .button { justify-self: start; }
+.tg-qr {
+  width: 104px;
+  padding: 6px;
+  background: #fff;
+  border-radius: var(--cf-radius-s);
+}
+.tg-qr svg { display: block; width: 100%; height: auto; }
+.tg-note {
+  grid-column: 1 / -1;
+  font-size: 1rem;
+  line-height: 1.45;
+  color: var(--canopy-muted);
+}
+/* On a phone the link opens Telegram directly, so the QR code only helps on bigger screens. */
+@media (max-width: 719px) {
+  .tg-cta { grid-template-columns: 1fr; }
+  .tg-qr { display: none; }
+}
+/* Secondary to "Scan an orange": an outline button on the dark hero. */
+.tg-cta .button {
+  background: transparent;
+  color: var(--canopy-ink);
+  border: 2px solid var(--canopy-ink);
+  white-space: nowrap;
+}
+@media (hover: hover) and (pointer: fine) {
+  .tg-cta .button:hover { background: rgb(255 255 255 / 0.08); }
+}
