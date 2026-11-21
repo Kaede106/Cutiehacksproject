@@ -4,7 +4,7 @@ Three programs run on the laptop. They never call each other. They share files i
 
 ```
 webcam ──► vision runner ──► scans.jsonl ──┐
-                                            ├──► Telegram bot ──► grower (9:00 daily, /status)
+                                            ├──► Telegram bot ──► grower (9:00 daily, /status, ready-to-pick alerts)
 Arduino ─► sensor bridge ──► sensors.jsonl ┘
 ```
 
@@ -19,7 +19,7 @@ Arduino ─► sensor bridge ──► sensors.jsonl ┘
 
 ## Labels
 
-`unripe`, `ripening`, `ripe`, `mold`. They are the same as the web scanner's labels; `none` is never stored, a scan with no fruit simply has an empty `fruits` list. Confidence is `high`, `medium` or `low`, never a fake-precise percentage.
+`unripe`, `ripening` and `ripe` (ready to pick) are the same labels used by the web scanner. A scan with no fruit has an empty `fruits` list. Confidence is `high`, `medium` or `low`. Readers ignore old labels outside this list and any unused fields.
 
 ## `scans.jsonl` (one JSON object per line)
 
@@ -32,19 +32,19 @@ Arduino ─► sensor bridge ──► sensors.jsonl ┘
   "image": "scans/20261121T090012-3f9a.jpg",
   "fruits": [
     {"id": 1, "label": "ripe", "confidence": "high",
-     "scores": {"unripe": 0.02, "ripening": 0.10, "ripe": 0.85, "mold": 0.03},
-     "bbox": [412, 220, 96, 98],
-     "crop": null},
-    {"id": 2, "label": "mold", "confidence": "medium", "scores": {"...": 0},
-     "bbox": [130, 300, 90, 92],
-     "crop": "scans/20261121T090012-3f9a-2.jpg"}
+     "scores": {"unripe": 0.02, "ripening": 0.10, "ripe": 0.88},
+     "bbox": [412, 220, 96, 98]},
+    {"id": 2, "label": "ripening", "confidence": "medium",
+     "scores": {"unripe": 0.25, "ripening": 0.52, "ripe": 0.23},
+     "bbox": [130, 300, 90, 92]}
   ],
-  "summary": {"unripe": 0, "ripening": 0, "ripe": 1, "mold": 1}
+  "summary": {"unripe": 0, "ripening": 1, "ripe": 1}
 }
 ```
 
 - `source`: `webcam` or `file`. `model`: which classifier produced the labels (`color-heuristic-v1` until the CNN is plugged in).
-- `image` and `crop` are paths relative to the data folder. `crop` is saved at least for every `mold` fruit, so the bot can send its photo.
+- `id` identifies the scan and is unique across scans.
+- `image` is the optional whole-scan image path, relative to the data folder. It can be `null` when there is no image.
 - `bbox` is `[x, y, w, h]` in pixels of the saved image.
 - `summary` is filled by `store.append_scan`.
 

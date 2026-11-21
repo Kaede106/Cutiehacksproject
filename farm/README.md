@@ -1,5 +1,7 @@
 # CutieFarm on the laptop
 
+CutieFarm tells the grower which oranges are ready to pick and when the grove needs water.
+
 **New laptop (Windows):** from the repo root, run `powershell -ExecutionPolicy Bypass -File farm\setup.ps1` (add `--simulate-sensors` to use simulated sensor data). It creates the venv, installs everything, checks `farm/bot/.env`, lists the serial ports and starts the hub. Run the bot on only one laptop at a time.
 
 One command starts everything that runs on the laptop:
@@ -12,7 +14,7 @@ farm\bot\.venv\Scripts\python -m farm status              # what the data folder
 
 ```
 webcam ─► vision program (VISION_COMMAND) ─► scans.jsonl ───┐
-                                                            ├─► bot: 9:00 message, mold alerts,
+                                                            ├─► bot: 9:00 message, ready-to-pick alerts,
 Arduino ─USB─► sensor bridge (farm/sensors) ─► sensors.jsonl┘      watering advice, chat, photos
 ```
 

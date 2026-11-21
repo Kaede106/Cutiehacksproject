@@ -32,7 +32,7 @@ const inCircle = (x, y, cx, cy, r) => (x - cx) ** 2 + (y - cy) ** 2 < r * r;
 
 const ORANGE = [240, 130, 15];
 const GREEN = [95, 160, 50];
-const WHITE_FUZZ = [232, 232, 222];
+const WHITE = [232, 232, 222];
 const BLUE_GREEN = [90, 150, 150];
 
 const cases = [
@@ -49,12 +49,12 @@ const cases = [
     'orange with white and blue-green patches',
     buffer((x, y) => {
       if (inCircle(x, y, 50, 55, 7) || inCircle(x, y, 82, 80, 5)) return BLUE_GREEN;
-      if (inCircle(x, y, 50, 55, 16) || inCircle(x, y, 82, 80, 12)) return WHITE_FUZZ;
+      if (inCircle(x, y, 50, 55, 16) || inCircle(x, y, 82, 80, 12)) return WHITE;
       return ORANGE;
     }),
-    'mold',
+    'ripe',
   ],
-  ['green with white fuzz', buffer((x, y) => (inCircle(x, y, 64, 64, 22) ? WHITE_FUZZ : GREEN)), 'mold'],
+  ['green with a white patch', buffer((x, y) => (inCircle(x, y, 64, 64, 22) ? WHITE : GREEN)), 'unripe'],
   ['grey background', buffer(fill([128, 128, 128])), 'none'],
   ['white wall', buffer(fill([235, 235, 230])), 'none'],
   ['light skin', buffer(fill([224, 172, 140])), 'none'],
@@ -84,16 +84,22 @@ for (const [name, buf, expected] of cases) {
   check(`${name} -> ${expected}`, () => {
     const r = classifyBuffer(buf);
     assert.equal(r.label, expected, `got ${fmt(r)}`);
+    assert.deepEqual(Object.keys(r.scores), ['unripe', 'ripening', 'ripe']);
     const sum = Object.values(r.scores).reduce((a, b) => a + b, 0);
     if (r.label !== 'none') assert.ok(Math.abs(sum - 1) < 0.02, `scores sum to ${sum}`);
     assert.ok(r.confidence >= 0 && r.confidence <= 1);
   });
 }
 
-check('mold reading returns regions inside the buffer', () => {
-  const r = classifyBuffer(cases.find((c) => c[2] === 'mold')[1]);
-  assert.ok(r.regions.length >= 1, 'no regions');
-  for (const g of r.regions) assert.ok(g.x >= 0 && g.y >= 0 && g.x + g.w <= 1 && g.y + g.h <= 1);
+check('white and blue-green patches do not count towards fruit coverage', () => {
+  const patched = buffer((x) => {
+    if (x < SIZE / 4) return WHITE;
+    if (x < SIZE / 2) return BLUE_GREEN;
+    return ORANGE;
+  });
+  const { coverage, scores } = classifyBuffer(patched);
+  assert.equal(coverage, 0.5);
+  assert.deepEqual(scores, { unripe: 0, ripening: 0, ripe: 1 });
 });
 
 check('a clean orange is high confidence', () => {
@@ -117,9 +123,9 @@ check('centre square of a 16:9 frame shown in 4:3', () => assert.deepEqual(cente
 check('centre square of a portrait frame shown in 4:3', () => assert.deepEqual(centerRoi(720, 960), { x: 198, y: 318, size: 324 }));
 
 console.log('\nSmoothing');
-const ripe = { label: 'ripe', confidence: 0.9, scores: { unripe: 0, ripening: 0.1, ripe: 0.9, mold: 0 } };
-const ripening = { label: 'ripening', confidence: 0.8, scores: { unripe: 0.1, ripening: 0.8, ripe: 0.1, mold: 0 } };
-const none = { label: 'none', confidence: 1, scores: { unripe: 0, ripening: 0, ripe: 0, mold: 0 } };
+const ripe = { label: 'ripe', confidence: 0.9, scores: { unripe: 0, ripening: 0.1, ripe: 0.9 } };
+const ripening = { label: 'ripening', confidence: 0.8, scores: { unripe: 0.1, ripening: 0.8, ripe: 0.1 } };
+const none = { label: 'none', confidence: 1, scores: { unripe: 0, ripening: 0, ripe: 0 } };
 
 check('single odd frames do not flip the label', () => {
   const sm = createSmoother();

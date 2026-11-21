@@ -235,10 +235,10 @@ def test_advice_line_escapes_text():
 
 def test_daily_message_puts_watering_after_the_oranges():
     scan = {"taken_at": NOW.isoformat(), "model": "cnn", "fruits": [],
-            "summary": {"ripe": 2, "ripening": 0, "unripe": 0, "mold": 0}}
+            "summary": {"ripe": 2, "ripening": 0, "unripe": 0}}
     a = advise([], forecast(4.0), TODAY, CFG)
     lines = to_plain(compose(scan, None, NOW, irrigation=a).text).split("\n\n")
-    assert lines[0] == "2 ready to pick." and lines[2].startswith("Water weekly")
+    assert lines[0] == "2 ready to pick today." and lines[1].startswith("Water weekly")
     assert "Water weekly" in to_plain(compose(None, None, NOW, irrigation=a).text)
 
 

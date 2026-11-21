@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
-LABELS = ("unripe", "ripening", "ripe", "mold")
+LABELS = ("unripe", "ripening", "ripe")
 CONFIDENCE = ("high", "medium", "low")
 
 SCANS_FILE = "scans.jsonl"

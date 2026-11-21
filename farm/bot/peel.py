@@ -12,14 +12,14 @@ from __future__ import annotations
 
 import numpy as np
 
-LABELS = ("unripe", "ripening", "ripe", "mold")
+from farm.common.store import LABELS
 
 # Copied from THRESHOLDS in web/src/scanner/classifier.js. Keep the two in step.
 THRESHOLDS = {
     "darkV": 0.2,  # darker pixels are shadow or background
-    "glare": {"minV": 0.965, "maxS": 0.12},  # clipped specular highlights, never counted as mold
+    "glare": {"minV": 0.965, "maxS": 0.12},  # clipped specular highlights
     "fruit": {"minS": 0.33, "minV": 0.22, "hueMin": 5, "hueMax": 145},
-    "white": {"maxS": 0.2, "minV": 0.62},  # white fuzz
+    "white": {"maxS": 0.2, "minV": 0.62},
     "blueGreen": {"hueMin": 150, "hueMax": 235, "minS": 0.1, "maxS": 0.65, "minV": 0.25, "maxV": 0.92},
     # YCbCr box for skin (and brown wood). Saturated orange peel has Cb < 77, so it falls outside.
     "skin": {"cbMin": 77, "cbMax": 127, "crMin": 133, "crMax": 173, "maxS": 0.72, "maxHue": 50},
@@ -27,18 +27,10 @@ THRESHOLDS = {
     # green from greenFull. Linear blends between them, so the three weights always sum to 1.
     "hue": {"ripeFull": 36, "yellowFull": 48, "yellowEnd": 60, "greenFull": 76},
     "coverage": {"none": 0.1, "full": 0.4},  # share of the region that must be fruit
-    "grid": 16,  # the region is split into grid x grid cells for the mold search
-    "fruitCell": 0.35,
-    "moldCell": 0.25,
-    "enclosureRays": 5,  # of 8 rays from a mold cell, this many must reach fruit
-    "mold": {"evidenceStart": 0.03, "evidenceFull": 0.1, "blueWeight": 2.5},
 }
 
 # Pixel classes, same numbering as PIXEL_CLASS in the JS.
 DARK, GLARE, WHITE, BLUE, FRUIT, SKIN, OTHER = range(7)
-
-_RAYS = ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1))
-
 
 def rgb_to_hsv(rgb: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Hue in degrees 0..360, saturation and value in 0..1. Mirrors rgbToHsv() in the JS.
@@ -119,94 +111,15 @@ def smoothstep(a: float, b: float, x: float) -> float:
 
 
 def analyze(rgb: np.ndarray, T: dict = THRESHOLDS) -> dict:
-    """Count pixel classes and find mold cells enclosed by fruit. Mirrors analyzeBuffer()."""
-    height, width = rgb.shape[:2]
-    gw = max(1, min(T["grid"], width))
-    gh = max(1, min(T["grid"], height))
-    cells = gw * gh
+    """Count fruit pixels and accumulate their ripeness weights."""
     cls, hue = classify_pixels(rgb, T)
-
-    rows = (np.arange(height) * gh) // height
-    cols = (np.arange(width) * gw) // width
-    cell = (rows[:, None] * gw + cols[None, :]).ravel()
-    flat = cls.ravel()
-
-    def per_cell(which: int) -> np.ndarray:
-        return np.bincount(cell[flat == which], minlength=cells)
-
-    c_total = np.bincount(cell, minlength=cells)
-    c_fruit, c_white, c_blue = per_cell(FRUIT), per_cell(WHITE), per_cell(BLUE)
-    counts = np.bincount(flat, minlength=7)
-    w_ripe, w_yellow, w_green = (float(w.sum()) for w in hue_weights(hue.ravel()[flat == FRUIT], T))
-
-    with np.errstate(invalid="ignore", divide="ignore"):
-        has = c_total > 0
-        fruit_cell = has & (c_fruit / np.where(has, c_total, 1) >= T["fruitCell"])
-        mold_cand = has & ((c_white + c_blue) / np.where(has, c_total, 1) >= T["moldCell"])
-
-    # A mold candidate counts only when fruit surrounds it: cast 8 rays through other candidate
-    # cells and require most of them to reach a fruit cell. A white wall or table next to the
-    # fruit reaches fruit in at most three or four directions, so it is ignored.
-    enclosed = np.zeros(cells, dtype=bool)
-    for cy in range(gh):
-        for cx in range(gw):
-            c = cy * gw + cx
-            if not mold_cand[c]:
-                continue
-            hits = 0
-            for dx, dy in _RAYS:
-                x, y = cx + dx, cy + dy
-                while 0 <= x < gw and 0 <= y < gh:
-                    n = y * gw + x
-                    if fruit_cell[n]:
-                        hits += 1
-                        break
-                    if not mold_cand[n]:
-                        break
-                    x += dx
-                    y += dy
-            if hits >= T["enclosureRays"]:
-                enclosed[c] = True
-
+    fruit = cls == FRUIT
+    ripe, yellow, green = (float(w.sum()) for w in hue_weights(hue[fruit], T))
     return {
-        "width": width, "height": height, "gw": gw, "gh": gh,
-        "total": width * height,
-        "fruit": int(counts[FRUIT]),
-        "skin": int(counts[SKIN]),
-        "glare": int(counts[GLARE]),
-        "dark": int(counts[DARK]),
-        "weights": {"ripe": w_ripe, "yellow": w_yellow, "green": w_green},
-        "moldWhite": int(c_white[enclosed].sum()),
-        "moldBlue": int(c_blue[enclosed].sum()),
-        "enclosed": enclosed,
+        "total": cls.size,
+        "fruit": int(fruit.sum()),
+        "weights": {"ripe": ripe, "yellow": yellow, "green": green},
     }
-
-
-def _mold_regions(stats: dict) -> list[dict]:
-    """Connected groups of enclosed mold cells as 0..1 boxes. Mirrors moldRegions()."""
-    enclosed, gw, gh = stats["enclosed"], stats["gw"], stats["gh"]
-    seen = np.zeros(len(enclosed), dtype=bool)
-    regions = []
-    for start in range(len(enclosed)):
-        if not enclosed[start] or seen[start]:
-            continue
-        min_x, min_y, max_x, max_y, size = gw, gh, -1, -1, 0
-        stack = [start]
-        seen[start] = True
-        while stack:
-            c = stack.pop()
-            x, y = c % gw, c // gw
-            size += 1
-            min_x, max_x, min_y, max_y = min(min_x, x), max(max_x, x), min(min_y, y), max(max_y, y)
-            for n in (c - 1 if x > 0 else -1, c + 1 if x < gw - 1 else -1,
-                      c - gw if y > 0 else -1, c + gw if y < gh - 1 else -1):
-                if n >= 0 and enclosed[n] and not seen[n]:
-                    seen[n] = True
-                    stack.append(n)
-        regions.append({"x": min_x / gw, "y": min_y / gh, "w": (max_x - min_x + 1) / gw,
-                        "h": (max_y - min_y + 1) / gh, "label": "mold", "size": size})
-    regions.sort(key=lambda r: -r["size"])  # stable, like Array.prototype.sort
-    return [{k: v for k, v in r.items() if k != "size"} for r in regions[:4]]
 
 
 def score(stats: dict, T: dict = THRESHOLDS) -> dict:
@@ -215,9 +128,7 @@ def score(stats: dict, T: dict = THRESHOLDS) -> dict:
     Returns {label, confidence (0..1), scores, regions, coverage}. label is one of LABELS or
     'none' when fruit covers less than coverage.none of the region.
     """
-    mold_area = stats["moldWhite"] + stats["moldBlue"]
-    fruit_area = stats["fruit"] + mold_area
-    coverage = fruit_area / stats["total"] if stats["total"] else 0.0
+    coverage = stats["fruit"] / stats["total"] if stats["total"] else 0.0
 
     o = y = g = 0.0
     if stats["fruit"]:
@@ -227,15 +138,10 @@ def score(stats: dict, T: dict = THRESHOLDS) -> dict:
     # Green and orange on the same fruit is the ripening signal, so the smaller of the two
     # shares moves into "ripening" with extra weight.
     mix = min(g, o)
-    m = T["mold"]
-    evidence = (stats["moldWhite"] + m["blueWeight"] * stats["moldBlue"]) / fruit_area if fruit_area else 0.0
-    mold_score = smoothstep(m["evidenceStart"], m["evidenceFull"], evidence)
-    keep = 1 - mold_score
     scores = {
-        "unripe": (g - 0.75 * mix) * keep,
-        "ripening": (y + 1.5 * mix) * keep,
-        "ripe": (o - 0.75 * mix) * keep,
-        "mold": mold_score if fruit_area else 0.0,
+        "unripe": (g - 0.75 * mix),
+        "ripening": (y + 1.5 * mix),
+        "ripe": (o - 0.75 * mix),
     }
 
     if coverage < T["coverage"]["none"]:
@@ -247,7 +153,7 @@ def score(stats: dict, T: dict = THRESHOLDS) -> dict:
     coverage_factor = smoothstep(T["coverage"]["none"], T["coverage"]["full"], coverage)
     confidence = coverage_factor * (0.35 + 0.65 * _clamp01(margin / 0.6))
     return {"label": ranked[0], "confidence": confidence, "scores": scores,
-            "regions": _mold_regions(stats) if mold_score > 0 else [], "coverage": coverage}
+            "regions": [], "coverage": coverage}
 
 
 def classify_rgb(rgb: np.ndarray, T: dict = THRESHOLDS) -> dict:

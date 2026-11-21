@@ -19,12 +19,14 @@ function scanGrove() {
   const box = grove.getBoundingClientRect();
   if (!box.width) return;
 
-  for (const mark of grove.querySelectorAll('.mark')) {
+  const marks = [...grove.querySelectorAll('.mark')];
+  const markDelays = marks.map((mark) => {
     const r = mark.getBoundingClientRect();
     const centre = (r.left + r.width / 2 - box.left) / box.width;
     const at = Math.min(1, Math.max(0, centre));
-    mark.style.animationDelay = `${Math.round(delay + sweep * at)}ms`;
-  }
+    return `${Math.round(delay + sweep * at)}ms`;
+  });
+  marks.forEach((mark, i) => { mark.style.animationDelay = markDelays[i]; });
 
   const hero = grove.closest('.hero') || grove;
   hero.style.setProperty('--sweep', `${sweep}ms`);

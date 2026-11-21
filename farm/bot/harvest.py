@@ -13,7 +13,7 @@ from farm.common import store
 from .compose import _counts, _esc, _parse_time
 
 HARVEST_FILE = "harvest.jsonl"
-KINDS = ("picked", "removed", "watered")
+KINDS = ("picked", "watered")
 DAILY_WRITE_LIMIT = 50
 WRITE_LIMIT_NOTICE = "You've reached today's harvest log limit. You can log more tomorrow."
 _lock = Lock()
@@ -24,8 +24,6 @@ _NUMBER = r"(?P<count>10000|[1-9][0-9]{0,3})"
 _PATTERNS = (
     ("picked", rf"(?:i )?picked {_NUMBER}(?: oranges?)?(?: today)?"),
     ("picked", rf"(?:(?:yo )?recog[ií]|(?:yo )?he recogido) {_NUMBER}(?: naranjas?)?(?: hoy)?"),
-    ("removed", rf"(?:i )?removed (?:{_NUMBER}(?: (?:moldy )?oranges?)?|the moldy one)(?: today)?"),
-    ("removed", rf"(?:(?:yo )?quit[eé]|(?:yo )?he quitado) {_NUMBER}(?: naranjas?)?(?: con (?:hongo|moho))?(?: hoy)?"),
     ("watered", r"(?:i )?watered(?: the (?:trees|orange trees|plants|grove))?(?: today)?"),
     ("watered", r"(?:(?:yo )?regu[eé]|(?:yo )?he regado)(?: (?:los (?:árboles|naranjos)|las plantas))?(?: hoy)?"),
 )
@@ -40,7 +38,7 @@ def parse_text(text: str) -> tuple[str, int] | None:
 
 
 def parse_command(text: str) -> tuple[str, int] | None:
-    command = re.fullmatch(r"/(picked|removed|watered)(?:@[a-z0-9_]+)?(?:\s+(.*))?",
+    command = re.fullmatch(r"/(picked|watered)(?:@[a-z0-9_]+)?(?:\s+(.*))?",
                            text.strip(), re.IGNORECASE)
     if command is None:
         return None
@@ -92,7 +90,8 @@ def entries(chat_id: int, *, include_demo: bool = False) -> list[dict[str, Any]]
         if not isinstance(record, dict):
             continue
         kind, count = record.get("kind"), record.get("count")
-        if kind in KINDS and type(count) is int and count > 0:
+        # Replay legacy entries so old undo markers still undo the original action.
+        if (kind in KINDS or kind == "removed") and type(count) is int and count > 0:
             if record.get("demo"):
                 if include_demo and record.get("chat_id") in (None, chat_id):
                     examples.append(record)
@@ -150,14 +149,15 @@ def _example_note(records: Iterable[dict[str, Any]]) -> str:
 
 def week_summary(chat_id: int, now: datetime) -> str:
     scans = sorted(_recent(store._read(store.SCANS_FILE), now), key=lambda item: item[0])
-    actions = list(_recent(entries(chat_id, include_demo=True), now))
+    actions = [(taken, record) for taken, record in _recent(entries(chat_id, include_demo=True), now)
+               if record["kind"] in KINDS]
 
     scan_note = _example_note(record for _, record in scans)
     if len(scans) < 2:
         scan_line = "Not enough scan data. At least two scans are needed."
     else:
         first, latest = _counts(scans[0][1]), _counts(scans[-1][1])
-        labels = (("ripe", "Ready"), ("ripening", "Ripening"), ("unripe", "Unripe"), ("mold", "Possible mold"))
+        labels = (("ripe", "Ready"), ("ripening", "Ripening"), ("unripe", "Unripe"))
         scan_line = " · ".join(f"{label} {first[key]} → {latest[key]}" for key, label in labels)
 
     harvest_note = _example_note(record for _, record in actions)
@@ -172,7 +172,7 @@ def week_summary(chat_id: int, now: datetime) -> str:
             if kind == "watered":
                 watered_days.add(taken.astimezone(now.tzinfo).date())
         days = ", ".join(f"{day:%a} {day:%b} {day.day}" for day in sorted(watered_days))
-        harvest_line = f"Picked {totals['picked']} · Removed {totals['removed']}\nWatered: {days or 'no days logged'}"
+        harvest_line = f"Picked {totals['picked']}\nWatered: {days or 'no days logged'}"
 
     return (
         f"<b>Last 7 days</b>\n\n<b>Scans</b>{scan_note}\n{_esc(scan_line)}"

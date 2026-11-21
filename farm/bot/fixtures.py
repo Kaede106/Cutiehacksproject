@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable
 
+from farm.common.store import LABELS
+
 from .irrigation import Weather, WeatherDay
 
 
@@ -37,7 +39,6 @@ def _scan(now: datetime, labels: list[str], *, age: timedelta = timedelta(minute
             "label": label,
             "confidence": (confidence or {}).get(i, "high"),
             "bbox": [40 + 90 * (i % 6), 60 + 100 * (i // 6), 80, 82],
-            "crop": f"scans/{scan_id}-{i}.jpg" if label == "mold" else None,
         })
     return {
         "id": scan_id,
@@ -46,7 +47,7 @@ def _scan(now: datetime, labels: list[str], *, age: timedelta = timedelta(minute
         "model": model,
         "image": f"scans/{scan_id}.jpg",
         "fruits": fruits,
-        "summary": {k: labels.count(k) for k in ("unripe", "ripening", "ripe", "mold")},
+        "summary": {k: labels.count(k) for k in LABELS},
     }
 
 
@@ -106,9 +107,9 @@ def ripe_heavy(now: datetime) -> Fixture:
     return Fixture(_scan(now, ["ripe"] * 6 + ["ripening"] * 2 + ["unripe"]))
 
 
-def mold(now: datetime) -> Fixture:
-    # Matches the example on the landing page: 3 ready, 5 ripening, 1 possible mold.
-    return Fixture(_scan(now, ["ripe"] * 3 + ["ripening"] * 5 + ["mold"], confidence={9: "medium"}))
+def pick_and_water(now: datetime) -> Fixture:
+    history = hot_dry(now).history
+    return _with(history, _scan(now, ["ripe"] * 3 + ["ripening"] * 5))
 
 
 def empty(now: datetime) -> Fixture:
@@ -165,7 +166,7 @@ def no_data(now: datetime) -> Fixture:
 
 FIXTURES: dict[str, Callable[[datetime], Fixture]] = {
     "ripe-heavy": ripe_heavy,
-    "mold": mold,
+    "pick-and-water": pick_and_water,
     "empty": empty,
     "stale": stale,
     "unripe": unripe,

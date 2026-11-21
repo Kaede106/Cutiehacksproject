@@ -24,14 +24,6 @@ def buttons(sent):
     return {button.text: button.callback_data for row in markup.inline_keyboard for button in row}
 
 
-def add_mold_photo(data, filename="x-1.jpg"):
-    photo = data / "scans" / filename
-    photo.parent.mkdir(exist_ok=True)
-    photo.write_bytes(b"\xff\xd8\xff")
-    add_scan(data, ["mold", "ripe"], crop=f"scans/{filename}")
-    return photo
-
-
 @pytest.mark.parametrize("entry", ["start", "status", "daily"])
 def test_status_entry_points_attach_keyboard(data, entry):
     h, ctx = handlers(data), context()
@@ -46,37 +38,6 @@ def test_status_entry_points_attach_keyboard(data, entry):
     }
 
 
-@pytest.mark.parametrize("has_photo", [False, True])
-def test_mold_button_requires_a_sendable_photo(data, has_photo):
-    if has_photo:
-        add_mold_photo(data)
-    else:
-        add_scan(data, ["mold"])
-    ctx = context()
-    run(handlers(data).status(update(9), ctx))
-    actions = buttons(ctx.bot.send_message.await_args)
-    assert ("Mold photos" in actions) is has_photo
-    assert all(len(action.encode()) <= 64 for action in actions.values())
-    assert ctx.bot.send_photo.await_count == int(has_photo)
-
-
-def test_daily_photo_forbidden_unsubscribes_and_continues(data):
-    add_mold_photo(data)
-    h, ctx = handlers(data), context()
-    for chat in (1, 2, 3):
-        h.state.subscribe(chat, datetime.now(UTC))
-
-    async def send_photo(chat_id, **kwargs):
-        if chat_id == 2:
-            raise Forbidden("bot was blocked by the user")
-
-    ctx.bot.send_photo.side_effect = send_photo
-    run(h.daily(ctx))
-    assert [sent.args[0] for sent in ctx.bot.send_photo.await_args_list] == [1, 2, 3]
-    assert all("Mold photos" in buttons(sent) for sent in ctx.bot.send_message.await_args_list)
-    assert h.state.chats() == [1, 3]
-
-
 def test_water_callback_matches_water_command(data):
     h, ctx = handlers(data), context()
     run(h.water(update(9), ctx))
@@ -86,29 +47,6 @@ def test_water_callback_matches_water_command(data):
     run(StatusButtons(h).handle(u, ctx))
     u.callback_query.answer.assert_awaited_once_with()
     assert ctx.bot.send_message.await_args == expected
-
-
-@pytest.mark.parametrize("change", [None, "deleted", "new_scan"])
-def test_mold_callback_resends_only_the_shown_photos(data, change):
-    photo = add_mold_photo(data)
-    h, ctx = handlers(data), context()
-    run(h.status(update(9), ctx))
-    u = callback(9, buttons(ctx.bot.send_message.await_args)["Mold photos"])
-    expected = ctx.bot.send_photo.await_args
-    ctx.bot.reset_mock()
-    if change == "deleted":
-        photo.unlink()
-    elif change == "new_scan":
-        add_mold_photo(data, "replacement.jpg")
-    run(StatusButtons(h).handle(u, ctx))
-    u.callback_query.answer.assert_awaited_once_with()
-    if change:
-        ctx.bot.send_photo.assert_not_awaited()
-        assert "no longer available" in ctx.bot.send_message.await_args.args[1]
-    else:
-        ctx.bot.send_photo.assert_awaited_once()
-        assert ctx.bot.send_photo.await_args == expected
-        ctx.bot.send_message.assert_not_awaited()
 
 
 def test_reminder_replaces_pending_job_and_resends_current_status(data, monkeypatch):
@@ -162,7 +100,7 @@ def test_disallowed_callback_is_acknowledged_without_running_action(data, chat_i
     ctx.bot.send_message.assert_not_awaited()
 
 
-@pytest.mark.parametrize("action", ["v0:mold", "v1:unknown", None])
+@pytest.mark.parametrize("action", ["v1:mold:old-message", "v1:unknown", None])
 def test_unknown_callback_points_to_status(data, action):
     ctx, u = context(), callback(9, action)
     run(StatusButtons(handlers(data)).handle(u, ctx))

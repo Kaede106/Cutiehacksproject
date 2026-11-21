@@ -10,7 +10,6 @@
   --_unripe: var(--cf-unripe, #22501a);
   --_ripening: var(--cf-ripening, #b08f00);
   --_ripe: var(--cf-ripe, #bb3a0e);
-  --_mold: var(--cf-mold, #2f5c9c);
   --_focus: var(--cf-focus, #1450c8);
   --_r-s: var(--cf-radius-s, 6px);
   --_r-m: var(--cf-radius-m, 16px);
@@ -92,13 +91,6 @@
 .cf-scanner__corner--tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-top-right-radius: var(--_r-s); }
 .cf-scanner__corner--bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-bottom-left-radius: var(--_r-s); }
 .cf-scanner__corner--br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-bottom-right-radius: var(--_r-s); }
-.cf-scanner__regions { position: absolute; inset: 0; }
-.cf-scanner__region {
-  position: absolute;
-  border: 2px solid var(--_mold);
-  border-radius: var(--_r-s);
-  box-shadow: 0 0 0 1px var(--_surface), inset 0 0 0 1px var(--_surface);
-}
 
 /* Message panel over the stage for idle and camera problems. */
 .cf-scanner__panel {
@@ -170,7 +162,7 @@
 
 .cf-scanner__picker { flex: 1 1 18rem; min-width: 0; margin: 0; padding: 0; border: 0; }
 .cf-scanner__legend { padding: 0; margin-bottom: 6px; font-size: 0.875rem; font-weight: 600; }
-.cf-scanner__options { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.cf-scanner__options { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .cf-scanner__option { position: relative; display: grid; gap: 4px; cursor: pointer; }
 .cf-scanner__radio { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
 .cf-scanner__thumb {
@@ -228,8 +220,6 @@
 .cf-scanner__score[data-label="ripening"] { --_state: var(--_ripening); }
 .cf-scanner__result[data-label="ripe"],
 .cf-scanner__score[data-label="ripe"] { --_state: var(--_ripe); }
-.cf-scanner__result[data-label="mold"],
-.cf-scanner__score[data-label="mold"] { --_state: var(--_mold); }
 
 .cf-scanner__scores { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .cf-scanner__score {
