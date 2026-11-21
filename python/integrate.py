@@ -1,8 +1,7 @@
-import serial
 import time
-
+import serial
 # Replace 'COM3' with your actual port (e.g., '/dev/ttyACM0' on Mac/Linux)
-arduino = serial.Serial(port='COM3', baudrate=9600, timeout=1)
+arduino = serial.Serial(port='/dev/ttyUSB0', baudrate=9600, timeout=1)
 time.sleep(2)  # Wait for Arduino to finish resetting
 
 try:
