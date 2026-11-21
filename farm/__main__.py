@@ -3,6 +3,7 @@
     python -m farm                     bot + sensor bridge (+ vision, if VISION_COMMAND is set)
     python -m farm --simulate-sensors  same, with simulated sensor readings instead of the board
     python -m farm --no-sensors        bot only (plus vision, if set)
+    python -m farm --dashboard         also start the control room dashboard (http://127.0.0.1:8800)
     python -m farm status              print the status once and exit
 
 The parts still never talk to each other: they share the data folder described in
@@ -55,7 +56,7 @@ class Part:
         log.write(f"\n--- started {datetime.now():%Y-%m-%d %H:%M:%S}: {' '.join(self.command)}\n")
         log.flush()
         env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
-        if self.name in ("sensors", "vision"):
+        if self.name in ("sensors", "vision", "dashboard"):
             env.pop("TELEGRAM_BOT_TOKEN", None)
             env.pop("OPENAI_API_KEY", None)
         flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
@@ -179,6 +180,8 @@ def build_parts(args: argparse.Namespace) -> list[Part]:
     vision = os.environ.get("VISION_COMMAND", "").strip()
     if vision:
         parts.append(Part("vision", shlex.split(vision, posix=os.name != "nt"), logs / "vision.log"))
+    if getattr(args, "dashboard", False):  # read-only control room, see farm/dashboard
+        parts.append(Part("dashboard", [py, "-m", "farm.dashboard"], logs / "dashboard.log"))
     return parts
 
 
@@ -216,6 +219,7 @@ def main(argv: list[str] | None = None) -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--simulate-sensors", action="store_true", help="simulated readings instead of the board")
     group.add_argument("--no-sensors", action="store_true", help="don't start the sensor bridge")
+    parser.add_argument("--dashboard", action="store_true", help="also start the control room dashboard")
     args = parser.parse_args(argv)
     _load_env()
     if args.command == "status":

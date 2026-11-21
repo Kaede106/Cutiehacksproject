@@ -46,7 +46,7 @@ def test_data_lines_on_an_empty_folder(tmp_path, monkeypatch):
     assert "Last scan     none yet" in text and "Last sensors  none yet" in text
 
 
-@pytest.mark.parametrize("name", ["bot", "sensors", "vision"])
+@pytest.mark.parametrize("name", ["bot", "sensors", "vision", "dashboard"])
 def test_child_environment_keeps_secrets_only_for_bot(tmp_path, monkeypatch, name):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
     monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
