@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import math
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -35,6 +36,27 @@ class MalformedLine(ValueError):
     """A line that does not follow the protocol. The bridge logs and skips it."""
 
 
+# The team's Arduino sketch (sketch_nov21a) prints human-readable lines. The bridge accepts
+# those too, so the board works without changing its code:
+#   "Temperature: 23.40 C"   "Humidity: 55.00 %"   "Raw: 612 | Moisture: 45%"
+_NUM = r"(-?\d+(?:\.\d+)?)"
+HUMAN_FORMATS = (
+    (re.compile(r"^temperature\s*[:=]\s*" + _NUM + r"\s*(?:°|°)?\s*c?\s*$", re.I), "T"),
+    (re.compile(r"^humidity\s*[:=]\s*" + _NUM + r"\s*%?\s*$", re.I), "H"),
+    (re.compile(r"^raw\s*[:=]\s*" + _NUM + r"\b.*$", re.I), "SOIL"),
+)
+HUMAN_SKIP = re.compile(r"^(failed to read sensor|ready)\b", re.I)
+
+
+def from_human(text: str) -> str | None:
+    """Translate one of the sketch's human-readable lines into protocol form, or None."""
+    for pattern, key in HUMAN_FORMATS:
+        match = pattern.match(text)
+        if match:
+            return f"{key}={match.group(1)}"
+    return None
+
+
 def parse_line(line: str) -> dict[str, float | None] | None:
     """Parse one protocol line.
 
@@ -43,8 +65,9 @@ def parse_line(line: str) -> dict[str, float | None] | None:
     Raises MalformedLine for anything that is not a valid reading.
     """
     text = line.strip().strip("\x00")
-    if not text or text.startswith("#"):
+    if not text or text.startswith("#") or HUMAN_SKIP.match(text):
         return None
+    text = from_human(text) or text
     if len(text) > MAX_LINE:
         raise MalformedLine(f"line longer than {MAX_LINE} characters")
     if not text.isascii() or not text.isprintable():
