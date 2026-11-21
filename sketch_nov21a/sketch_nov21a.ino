@@ -39,7 +39,7 @@ void setup() {
   pinMode(I2, OUTPUT);
   DDRF |= _BV(DHT11_PIN);
   PORTF |= _BV(DHT11_PIN);
-  Serial.println("Ready");
+  Serial.println("# Ready");
 }
 
 void loop() {
@@ -49,7 +49,11 @@ void loop() {
   int moisturePercent = map(rawValue, DRY_VALUE, WET_VALUE, 0, 100);
   moisturePercent = constrain(moisturePercent, 0, 100);
 
-  Serial.print("Raw: ");
+  // Line for the CutieFarm bridge (farm/sensors): raw ADC value, the laptop converts it to %.
+  Serial.print("SOIL=");
+  Serial.println(rawValue);
+  // Lines starting with "#" are for people reading the Serial Monitor; the bridge ignores them.
+  Serial.print("# Raw: ");
   Serial.print(rawValue);
   Serial.print(" | Moisture: ");
   Serial.print(moisturePercent);
@@ -77,15 +81,15 @@ void loop() {
   delayMicroseconds(40);
   DDRF &= ~_BV(DHT11_PIN);  //Set to input
   delayMicroseconds(40);
-  dht11_in = PINF & _BV(DHT11_PIN);  //Read data line is high
-  voltage if (dht11_in) {
-    Serial.println("dht11 start condition 1 not met");
+  dht11_in = PINF & _BV(DHT11_PIN);  //Read data line is high voltage
+  if (dht11_in) {
+    Serial.println("# dht11 start condition 1 not met");
     return;
   }
   delayMicroseconds(80);
   dht11_in = PINF & _BV(DHT11_PIN);
   if (!dht11_in) {
-    Serial.println("dht11 start condition 2 not met");
+    Serial.println("# dht11 start condition 2 not met");
     return;
   }
   delayMicroseconds(80);
@@ -97,9 +101,19 @@ void loop() {
   byte dht11_check_sum = dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3];
   // check check_sum
   if (dht11_dat[4] != dht11_check_sum) {
-    Serial.println("DHT11 checksum error");
+    Serial.println("# DHT11 checksum error");
+  } else {
+    // Line for the CutieFarm bridge: temperature in C and relative humidity in %.
+    Serial.print("T=");
+    Serial.print(dht11_dat[2], DEC);
+    Serial.print(".");
+    Serial.print(dht11_dat[3], DEC);
+    Serial.print(";H=");
+    Serial.print(dht11_dat[0], DEC);
+    Serial.print(".");
+    Serial.println(dht11_dat[1], DEC);
   }
-  Serial.print("Current humdity = ");
+  Serial.print("# Current humdity = ");
   Serial.print(dht11_dat[0], DEC);
   Serial.print(".");
   Serial.print(dht11_dat[1], DEC);
