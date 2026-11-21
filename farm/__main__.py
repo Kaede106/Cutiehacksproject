@@ -1,6 +1,7 @@
 """CutieFarm hub: start every laptop-side part with one command and watch them.
 
     python -m farm                     bot + sensor bridge (+ vision, if VISION_COMMAND is set)
+    python -m farm --vision            also start the built-in camera watcher
     python -m farm --simulate-sensors  same, with simulated sensor readings instead of the board
     python -m farm --no-sensors        bot only (plus vision, if set)
     python -m farm status              print the status once and exit
@@ -179,6 +180,8 @@ def build_parts(args: argparse.Namespace) -> list[Part]:
     vision = os.environ.get("VISION_COMMAND", "").strip()
     if vision:
         parts.append(Part("vision", shlex.split(vision, posix=os.name != "nt"), logs / "vision.log"))
+    elif args.vision:
+        parts.append(Part("vision", [py, "-m", "farm.vision", "watch"], logs / "vision.log"))
     return parts
 
 
@@ -213,6 +216,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     parser = argparse.ArgumentParser(prog="python -m farm", description="Start and watch every CutieFarm part.")
     parser.add_argument("command", nargs="?", choices=["run", "status"], default="run")
+    parser.add_argument("--vision", action="store_true", help="start the built-in camera watcher")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--simulate-sensors", action="store_true", help="simulated readings instead of the board")
     group.add_argument("--no-sensors", action="store_true", help="don't start the sensor bridge")
