@@ -788,3 +788,139 @@ code {
 @media (hover: hover) and (pointer: fine) {
   .tg-cta .button:hover { background: rgb(255 255 255 / 0.08); }
 }
+
+/* ---------- Watering simulator ---------- */
+
+#water-title { scroll-margin-top: 24px; }
+
+.watering-sim:not([hidden]) {
+  display: grid;
+  gap: 16px;
+  margin-top: 8px;
+  min-width: 0;
+}
+
+.watering-sim h3 {
+  font-size: clamp(1.5rem, 1.25rem + 0.75vw, 2rem);
+}
+
+.watering-sim-context {
+  margin-top: -8px;
+  color: var(--cf-ink-muted);
+  font-size: 1rem;
+}
+
+.watering-sim-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px clamp(16px, 3vw, 32px);
+}
+
+.watering-sim-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 8px;
+  font-size: 0.875rem;
+}
+
+.watering-sim-field label {
+  grid-column: 1 / -1;
+  font-weight: 600;
+}
+
+.watering-sim-field input {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  margin: 0;
+  accent-color: var(--canopy);
+}
+
+.watering-sim-field span {
+  color: var(--cf-ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 6ch;
+  text-align: right;
+}
+
+.watering-sim-result {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding-block: 12px;
+  border-block: 1px solid var(--line-soft);
+}
+
+.watering-sim-cadence {
+  color: var(--cf-unripe);
+  font-family: var(--cf-font-display);
+  font-variation-settings: var(--casual);
+  font-size: 1.625rem;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.watering-sim-next,
+.watering-sim-reason {
+  font-size: 0.9375rem;
+  color: var(--cf-ink-muted);
+}
+
+.watering-sim-next strong {
+  margin-inline-start: 4px;
+  color: var(--cf-ink);
+  font-weight: 600;
+}
+
+.watering-sim-reason { flex-basis: 100%; }
+
+.watering-sim-week {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.watering-sim-week figcaption {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.watering-sim-week ol {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.watering-sim-week li {
+  min-height: 72px;
+  padding: 8px 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--cf-radius-s);
+  background: var(--cf-surface);
+  color: var(--cf-ink-muted);
+  text-align: center;
+  font-size: 0.875rem;
+  line-height: 1.15;
+}
+
+.watering-sim-week li > span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.watering-sim-week .watering-sim-day-active {
+  background: var(--cf-accent);
+  border-color: var(--accent-edge);
+  color: var(--cf-accent-ink);
+}
+
+/* ---------- End watering simulator ---------- */
