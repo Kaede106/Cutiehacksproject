@@ -6,7 +6,6 @@ export const SAMPLES = [
   { id: 'green', name: 'Green', expected: 'unripe' },
   { id: 'turning', name: 'Turning', expected: 'ripening' },
   { id: 'deep', name: 'Deep orange', expected: 'ripe' },
-  { id: 'spotted', name: 'Spotted', expected: 'mold' },
   { id: 'crate', name: 'Empty crate', expected: 'none' },
 ];
 
@@ -77,11 +76,6 @@ const HALF = (() => {
 })();
 
 const FRUIT = { cx: 200, cy: 160, rx: 122, ry: 117 };
-const MOLD_PATCHES = [
-  { x: 168, y: 138, r: 30 },
-  { x: 240, y: 192, r: 21 },
-  { x: 226, y: 100, r: 12 },
-];
 
 const PEELS = {
   green: (px, py) => ({ h: 86 + (fbm(px / 22, py / 22, 5) - 0.5) * 10, s: 0.6, v: 0.8 }),
@@ -91,7 +85,6 @@ const PEELS = {
     return { h: lerp(80, 33, t), s: lerp(0.6, 0.85, t), v: lerp(0.8, 0.9, t) };
   },
   deep: (px, py) => ({ h: 26 + (fbm(px / 22, py / 22, 5) - 0.5) * 5, s: 0.9, v: 0.93 }),
-  spotted: (px, py) => ({ h: 28 + (fbm(px / 22, py / 22, 5) - 0.5) * 5, s: 0.86, v: 0.88 }),
 };
 
 function groveBackground(px, py) {
@@ -122,20 +115,6 @@ function leafColor(px, py) {
   return { rgb: vein ? hsv(95, 0.4, 0.45) : hsv(108, 0.62, light), alpha: edge };
 }
 
-function moldAt(px, py) {
-  // Returns { fuzz, core, halo } blend weights for citrus mold patches.
-  let fuzz = 0, core = 0, halo = 0;
-  MOLD_PATCHES.forEach((p, idx) => {
-    const d = Math.hypot(px - p.x, py - p.y) / p.r + (fbm(px / 7, py / 7, 21 + idx) - 0.5) * 0.55;
-    if (d >= 1.35) return;
-    if (d >= 1) { halo = Math.max(halo, 1 - (d - 1) / 0.35); return; }
-    const fiber = noise(px / 1.3, py / 1.3, 31);
-    fuzz = Math.max(fuzz, smoothstep(1, 0.72, d + (fiber - 0.5) * 0.35));
-    core = Math.max(core, smoothstep(0.5, 0.3, d + (noise(px / 3, py / 3, 41) - 0.5) * 0.25));
-  });
-  return { fuzz, core, halo };
-}
-
 function orangeScene(kind, px, py) {
   let color = groveBackground(px, py);
   const nx = (px - FRUIT.cx) / FRUIT.rx, ny = (py - FRUIT.cy) / FRUIT.ry;
@@ -147,25 +126,10 @@ function orangeScene(kind, px, py) {
     const lambert = Math.max(0, nx * L[0] + ny * L[1] + nz * L[2]);
     const shade = Math.min(1.08, 0.28 + 0.8 * lambert);
     const pores = noise(px / 1.7, py / 1.7, 3);
-    const peel = PEELS[kind](px, py, nx, ny);
-    let { h, s, v } = peel;
-    let m = { fuzz: 0, core: 0, halo: 0 };
-    if (kind === 'spotted') {
-      m = moldAt(px, py);
-      s *= 1 - 0.22 * m.halo;
-      h += 6 * m.halo;
-    }
-    let rgb = hsv(h, s, v * shade * (0.94 + 0.12 * pores));
-    if (m.fuzz > 0) {
-      const ms = 0.62 + 0.38 * Math.min(1, shade);
-      const fiber = noise(px / 1.3, py / 1.3, 31);
-      const fuzzRgb = hsv(50, 0.05, (0.93 + (fiber - 0.5) * 0.08) * ms);
-      const coreRgb = hsv(178 + (fiber - 0.5) * 14, 0.42, (0.62 + (fiber - 0.5) * 0.1) * ms);
-      rgb = mix(rgb, mix(fuzzRgb, coreRgb, m.core), m.fuzz);
-    }
-    const spec = Math.pow(Math.max(0, nx * HALF[0] + ny * HALF[1] + nz * HALF[2]), 45) * 0.55 * (0.7 + 0.3 * pores) * (1 - m.fuzz);
-    rgb = mix(rgb, [255, 255, 255], spec);
-    color = mix(color, rgb, alpha);
+    const { h, s, v } = PEELS[kind](px, py, nx, ny);
+    const rgb = hsv(h, s, v * shade * (0.94 + 0.12 * pores));
+    const spec = Math.pow(Math.max(0, nx * HALF[0] + ny * HALF[1] + nz * HALF[2]), 45) * 0.55 * (0.7 + 0.3 * pores);
+    color = mix(color, mix(rgb, [255, 255, 255], spec), alpha);
   }
   // Calyx at the stem.
   const sd = Math.hypot(px - 204, py - (FRUIT.cy - FRUIT.ry + 6));

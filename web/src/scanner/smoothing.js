@@ -1,5 +1,5 @@
 // Smooths per-frame readings so the label does not flicker. Pure and model-agnostic: it only reads
-// { label, confidence, scores, regions } from each frame, so it works for any classifier.
+// { label, confidence, scores } from each frame, so it works for any classifier.
 import { LABELS } from './classifier.js';
 
 export function createSmoother({ tau = 0.4, switchMargin = 0.08, enterNone = 0.65, exitNone = 0.35, staleMs = 1000 } = {}) {
@@ -9,7 +9,6 @@ export function createSmoother({ tau = 0.4, switchMargin = 0.08, enterNone = 0.6
   let label = null;
   let lastT = null;
   let lastFruitT = -Infinity;
-  let regions = [];
 
   function reset() {
     scores = null;
@@ -18,7 +17,6 @@ export function createSmoother({ tau = 0.4, switchMargin = 0.08, enterNone = 0.6
     label = null;
     lastT = null;
     lastFruitT = -Infinity;
-    regions = [];
   }
 
   /** Feed one frame's result at time `t` (ms). Returns the smoothed reading. */
@@ -39,7 +37,6 @@ export function createSmoother({ tau = 0.4, switchMargin = 0.08, enterNone = 0.6
         confidence += a * (result.confidence - confidence);
       }
       lastFruitT = t;
-      regions = result.regions ?? [];
     }
 
     const wasNone = label == null || label === 'none';
@@ -56,8 +53,7 @@ export function createSmoother({ tau = 0.4, switchMargin = 0.08, enterNone = 0.6
     return {
       label,
       confidence: label === 'none' ? noneEma : confidence,
-      scores: scores ? { ...scores } : { unripe: 0, ripening: 0, ripe: 0, mold: 0 },
-      regions: label === 'mold' ? regions : [],
+      scores: scores ? { ...scores } : { unripe: 0, ripening: 0, ripe: 0 },
       changed,
     };
   }
