@@ -10,7 +10,7 @@ import pytest
 from farm import __main__ as hub
 from farm.common import store
 from farm.vision import __main__ as cli
-from farm.vision.scan import find_boxes
+from farm.vision.scan import RIPENESS, classify_color, find_boxes, peel
 
 
 @pytest.fixture(autouse=True)
@@ -38,12 +38,11 @@ def test_file_scan_saves_a_contract_record(orchard, tmp_path, data_folder):
     path = tmp_path / "oranges.jpg"
     orchard.save(path, quality=98, subsampling=0)
 
-    assert cli.main(["scan", "--image", str(path)]) == 0
+    assert cli.main(["scan", "--image", str(path), "--detector", "color"]) == 0
     scan = store.latest_scan(max_age=None)
     assert set(scan) == {"id", "taken_at", "source", "model", "image", "fruits", "summary"}
     assert (scan["source"], scan["model"]) == ("file", "color-heuristic-v1")
     assert datetime.fromisoformat(scan["taken_at"]).utcoffset() is not None
-    assert scan["summary"] == dict.fromkeys(store.LABELS, 1)
     assert scan["image"] == f"scans/{scan['id']}.jpg"
     with Image.open(data_folder / scan["image"]) as saved:
         assert saved.size == orchard.size
@@ -51,26 +50,33 @@ def test_file_scan_saves_a_contract_record(orchard, tmp_path, data_folder):
 
     fruits = scan["fruits"]
     assert [fruit["id"] for fruit in fruits] == [1, 2, 3, 4]
-    assert [fruit["label"] for fruit in fruits] == list(store.LABELS)
+    assert [fruit["label"] for fruit in fruits[:3]] == list(RIPENESS)
+    assert fruits[3]["label"] in RIPENESS
+    assert {label: scan["summary"][label] for label in RIPENESS} == {
+        label: sum(fruit["label"] == label for fruit in fruits) for label in RIPENESS
+    }
     for fruit, center in zip(fruits, (65, 195, 325, 455)):
         assert set(fruit) == {"id", "label", "confidence", "scores", "bbox", "crop"}
         assert fruit["confidence"] in store.CONFIDENCE
-        assert set(fruit["scores"]) == set(store.LABELS)
+        assert set(fruit["scores"]) == set(RIPENESS)
         assert all(isinstance(score, float) for score in fruit["scores"].values())
         assert fruit["bbox"] == pytest.approx([center - 44, 26, 89, 89], abs=2)
+        assert fruit["crop"] is None
+    assert list((data_folder / "scans").iterdir()) == [data_folder / scan["image"]]
 
-    assert [fruit["crop"] for fruit in fruits[:3]] == [None] * 3
-    mold = fruits[3]
-    assert mold["crop"] == f"scans/{scan['id']}-4.jpg"
-    with Image.open(data_folder / mold["crop"]) as saved:
-        assert saved.size == tuple(mold["bbox"][2:])
-        assert saved.format == "JPEG"
+
+def test_legacy_peel_label_maps_to_best_ripeness_score(monkeypatch):
+    scores = {"unripe": 0.08, "ripening": 0.12, "ripe": 0.09, "mold": 0.7}
+    monkeypatch.setattr(peel, "classify_rgb", lambda rgb: {
+        "label": "mold", "confidence": 0.8, "scores": scores,
+    })
+    assert classify_color(np.zeros((32, 32, 3), dtype=np.uint8))[:2] == ("ripening", "low")
 
 
 def test_empty_file_records_an_empty_scan(tmp_path):
     path = tmp_path / "empty.png"
     Image.new("RGB", (240, 140), (100, 100, 100)).save(path)
-    assert cli.main(["scan", "--image", str(path)]) == 0
+    assert cli.main(["scan", "--image", str(path), "--detector", "color"]) == 0
     scan = store.latest_scan(max_age=None)
     assert scan["fruits"] == []
     assert scan["summary"] == dict.fromkeys(store.LABELS, 0)
@@ -82,7 +88,7 @@ def test_touching_fruit_split_into_two_boxes():
     draw.ellipse((20, 20, 108, 108), fill=(246, 113, 20))
     draw.ellipse((101, 20, 189, 108), fill=(240, 216, 30))
 
-    left, right = find_boxes(np.asarray(image))
+    left, right = sorted(find_boxes(np.asarray(image)))
     assert (left[0], right[0] + right[2]) == (20, 190)
     assert 95 < right[0] < 115
     assert 95 < left[0] + left[2] < 115
@@ -96,7 +102,7 @@ def test_unavailable_camera_writes_nothing(opened, message, monkeypatch, capsys,
     capture = Mock(return_value=camera)
     monkeypatch.setattr(cli.cv2, "VideoCapture", capture)
 
-    assert cli.main(["scan", "--camera", "3"]) == 2
+    assert cli.main(["scan", "--camera", "3", "--detector", "color"]) == 2
     capture.assert_called_once_with(3)
     camera.release.assert_called_once()
     out, error = capsys.readouterr()
@@ -109,7 +115,7 @@ def test_unavailable_camera_writes_nothing(opened, message, monkeypatch, capsys,
 def test_invalid_image_writes_nothing(tmp_path, data_folder, capsys):
     path = tmp_path / "bad.jpg"
     path.write_bytes(b"invalid jpeg")
-    assert cli.main(["scan", "--image", str(path)]) == 2
+    assert cli.main(["scan", "--image", str(path), "--detector", "color"]) == 2
     assert "Cannot decode image" in capsys.readouterr().err
     assert not data_folder.exists()
 
@@ -117,11 +123,12 @@ def test_invalid_image_writes_nothing(tmp_path, data_folder, capsys):
 def test_classifier_plugin_receives_rgb_and_sets_model(orchard, tmp_path, monkeypatch):
     path = tmp_path / "oranges.png"
     orchard.save(path)
-    scores = dict.fromkeys(store.LABELS, np.float32(0.5))
+    scores = dict.fromkeys(RIPENESS, np.float32(0.5))
     plugin = Mock(return_value=("ripening", "medium", scores))
     monkeypatch.setitem(sys.modules, "test_classifier", Mock(classify=plugin))
 
-    assert cli.main(["scan", "--image", str(path), "--classifier", "test_classifier:classify"]) == 0
+    assert cli.main(["scan", "--image", str(path), "--detector", "color",
+                     "--classifier", "test_classifier:classify"]) == 0
     assert plugin.call_count == 4
     crop = plugin.call_args_list[0].args[0]
     assert crop.dtype == np.uint8
@@ -140,7 +147,7 @@ def test_watch_scans_immediately_then_waits(orchard, monkeypatch):
     sleep = Mock(side_effect=KeyboardInterrupt)
     monkeypatch.setattr(cli.time, "sleep", sleep)
 
-    assert cli.main(["watch", "--every", "2m"]) == 130
+    assert cli.main(["watch", "--every", "2m", "--detector", "color"]) == 130
     sleep.assert_called_once_with(120)
     assert store.latest_scan(max_age=None)["source"] == "webcam"
 
@@ -158,7 +165,7 @@ def test_live_s_saves_clean_frame_and_q_exits(orchard, monkeypatch, data_folder)
     monkeypatch.setattr(cli.cv2, "waitKey", Mock(side_effect=[ord("S"), ord("q")]))
     monkeypatch.setattr(cli.cv2, "destroyAllWindows", destroy)
 
-    assert cli.main(["live"]) == 0
+    assert cli.main(["live", "--detector", "color"]) == 0
     destroy.assert_called_once()
     assert not np.array_equal(show.call_args.args[1], frame)
     scan = store.latest_scan(max_age=None)
