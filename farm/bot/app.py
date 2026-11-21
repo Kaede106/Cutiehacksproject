@@ -8,14 +8,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from telegram import BotCommand, InputMediaPhoto, Update
+from telegram import BotCommand, Update
 from telegram.constants import ParseMode
 from telegram.error import Forbidden, TelegramError
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 
 from farm.common import store
 
 from .access import is_allowed, photo_path
+from .buttons import StatusButtons, photo_paths, send_photos, status_keyboard
 from .chat import Conversation, farm_context, keyword_intent, strip_html
 from .compose import Message, Photo, _mold_photos, compose
 from .photo import classify_photo, photo_reply
@@ -83,20 +84,14 @@ def _advice_or_none(config: Config, now: datetime) -> Advice | None:
         return None
 
 
-async def send(bot: Any, chat_id: int, message: Message, data_dir: Path) -> None:
-    await bot.send_message(chat_id, message.text, parse_mode=ParseMode.HTML)
-    paths = [(photo_path(data_dir, p.path), p.caption) for p in message.photos]
-    paths = [(path, caption) for path, caption in paths if path is not None]
+async def send(bot: Any, chat_id: int, message: Message, data_dir: Path, *, status: bool = True) -> None:
+    paths = photo_paths(data_dir, message.photos)
+    markup = status_keyboard(paths) if status else None
+    await bot.send_message(chat_id, message.text, parse_mode=ParseMode.HTML, reply_markup=markup)
     if not paths:
         return
     try:
-        if len(paths) == 1:
-            path, caption = paths[0]
-            await bot.send_photo(chat_id, photo=path, caption=caption, parse_mode=ParseMode.HTML)
-        else:
-            media = [InputMediaPhoto(media=path, caption=caption, parse_mode=ParseMode.HTML)
-                     for path, caption in paths]
-            await bot.send_media_group(chat_id, media=media)
+        await send_photos(bot, chat_id, paths)
     except Forbidden:
         raise
     except (TelegramError, OSError):
@@ -241,7 +236,7 @@ class Handlers:
         log.info("Mold alert for scan %s: sending to %d chat(s).", scan_id, len(chats))
         for chat_id in chats:
             try:
-                await send(context.bot, chat_id, message, store.data_dir())
+                await send(context.bot, chat_id, message, store.data_dir(), status=False)
             except Forbidden:
                 self.state.unsubscribe(chat_id)
             except TelegramError:
@@ -331,6 +326,7 @@ def build_application(config: Config) -> Application:
         await app.bot.set_my_commands([BotCommand(c, d) for c, d in COMMANDS])
 
     app = Application.builder().token(config.token).post_init(post_init).build()
+    app.add_handler(CallbackQueryHandler(StatusButtons(handlers).handle))
     app.add_handler(CommandHandler("start", handlers.start))
     app.add_handler(CommandHandler("stop", handlers.stop))
     app.add_handler(CommandHandler("status", handlers.status))
