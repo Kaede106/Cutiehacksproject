@@ -36,4 +36,5 @@ Run only one bot at a time with the same token: two bots polling Telegram at onc
 
 - [`bot/`](bot/README.md): the Telegram bot.
 - [`sensors/`](sensors/README.md): the Arduino serial bridge and a reference sketch for the board.
+- [`dashboard/`](dashboard/README.md): the read-only control room for the big screen (`python -m farm --dashboard`).
 - [`common/store.py`](common/store.py): the only code that reads and writes the shared files.
