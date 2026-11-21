@@ -6,6 +6,7 @@ arduino = serial.Serial(port='COM3', baudrate=9600, timeout=1)
 time.sleep(2)  # Wait for Arduino to finish resetting
 
 try:
+    print("hello")
     while True:
         # Check if data is waiting in the buffer
         if arduino.in_waiting > 0:
