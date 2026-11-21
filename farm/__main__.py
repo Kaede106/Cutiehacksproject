@@ -55,6 +55,9 @@ class Part:
         log.write(f"\n--- started {datetime.now():%Y-%m-%d %H:%M:%S}: {' '.join(self.command)}\n")
         log.flush()
         env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
+        if self.name in ("sensors", "vision"):
+            env.pop("TELEGRAM_BOT_TOKEN", None)
+            env.pop("OPENAI_API_KEY", None)
         flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
         self.process = subprocess.Popen(self.command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,
                                         env=env, creationflags=flags)
@@ -107,7 +110,7 @@ def _age(iso: str | None) -> str:
         return "never"
     try:
         seconds = (datetime.now().astimezone() - datetime.fromisoformat(iso)).total_seconds()
-    except ValueError:
+    except (TypeError, ValueError):
         return "unknown"
     if seconds < 90:
         return f"{int(seconds)} s ago"
@@ -189,7 +192,11 @@ def run(args: argparse.Namespace) -> int:
         while True:
             for p in parts:
                 p.check()
-            sys.stdout.write("\x1b[2J\x1b[H" + render(parts) + "\n")
+            try:
+                screen = render(parts)
+            except Exception as exc:
+                screen = f"CutieFarm hub: could not render status ({type(exc).__name__})."
+            sys.stdout.write("\x1b[2J\x1b[H" + screen + "\n")
             sys.stdout.flush()
             time.sleep(2)
     except KeyboardInterrupt:
@@ -212,7 +219,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     _load_env()
     if args.command == "status":
-        print("\n".join(data_lines()))
+        try:
+            print("\n".join(data_lines()))
+        except Exception as exc:
+            print(f"CutieFarm hub: could not read status ({type(exc).__name__}).")
+            return 1
         return 0
     return run(args)
 

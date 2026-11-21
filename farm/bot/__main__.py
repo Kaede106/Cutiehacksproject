@@ -9,6 +9,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 from .config import ConfigError, MissingTokenError, load_config, load_env_file, setup_logging
 from .fixtures import FIXTURES
@@ -75,33 +76,25 @@ def preview(args: argparse.Namespace) -> int:
 
 
 def run() -> int:
-    from telegram.error import InvalidToken, NetworkError
-
     from .app import build_application, clock
 
     config = load_config()
-    setup_logging([config.token])
+    setup_logging([config.token, quote(config.token, safe=""), (os.environ.get("OPENAI_API_KEY") or "").strip()])
     if config.allowed_chat_ids is None:
-        log.warning("ALLOWED_CHAT_IDS is not set: anyone who finds this bot can use it. "
-                    "Send /start to learn your chat ID, then set ALLOWED_CHAT_IDS in farm/bot/.env.")
+        log.warning("ALLOWED_CHAT_IDS is not set: anyone can use this bot in a private chat. "
+                    "Send /start and check this log for your chat ID to configure ALLOWED_CHAT_IDS.")
     else:
         log.info("Answering %d allowed chat(s) only.", len(config.allowed_chat_ids))
 
     from farm.common import store
 
-    app = build_application(config)
-    log.info("Data folder: %s", store.data_dir())
-    log.info("Daily message at %s %s. Press Ctrl+C to stop.", clock(config.daily_at), config.timezone.key)
     try:
+        app = build_application(config)
+        log.info("Data folder: %s", store.data_dir())
+        log.info("Daily message at %s %s. Press Ctrl+C to stop.", clock(config.daily_at), config.timezone.key)
         app.run_polling(drop_pending_updates=False)
-    except InvalidToken:
-        # PTB's own message for this error contains the token, so do not print it.
-        print("Telegram rejected TELEGRAM_BOT_TOKEN. Copy it again from @BotFather into farm/bot/.env.",
-              file=sys.stderr)
-        return 2
-    except NetworkError as exc:
-        print(f"Could not reach Telegram ({type(exc).__name__}). Check the internet connection.",
-              file=sys.stderr)
+    except Exception:
+        log.exception("Telegram bot failed")
         return 1
     return 0
 

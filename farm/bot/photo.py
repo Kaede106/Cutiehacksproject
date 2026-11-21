@@ -13,6 +13,8 @@ from PIL import Image, ImageOps
 
 from .peel import classify_rgb, confidence_level
 
+Image.MAX_IMAGE_PIXELS = 25_000_000
+
 ANALYSIS_SIZE = 128  # pixels per side of the analysed square, like the browser's downsampling
 CENTRE_SHARE = 0.7  # share of the photo's short side that is analysed
 
@@ -36,6 +38,7 @@ class PhotoResult:
 
 def centre_square(image: Image.Image) -> np.ndarray:
     """The central square of the photo, downsampled, as an RGB float array."""
+    image.draft("RGB", (512, 512))
     image = ImageOps.exif_transpose(image).convert("RGB")
     w, h = image.size
     side = int(min(w, h) * CENTRE_SHARE)
@@ -47,6 +50,8 @@ def centre_square(image: Image.Image) -> np.ndarray:
 
 def classify_photo(data: bytes) -> PhotoResult:
     with Image.open(io.BytesIO(data)) as image:
+        if image.width * image.height > Image.MAX_IMAGE_PIXELS:
+            raise Image.DecompressionBombError("Photo exceeds the pixel limit")
         rgb = centre_square(image)
     result = classify_rgb(rgb)
     label = result["label"]

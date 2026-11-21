@@ -1,10 +1,12 @@
 """Harvest parsing, disk storage, Telegram handlers and demo week seeding."""
+import asyncio
 import json
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+from telegram import Chat, Message, MessageEntity, Update
 from telegram.ext import CommandHandler
 
 from farm.bot import __main__ as cli, demo, harvest
@@ -76,11 +78,10 @@ def test_commands_require_the_right_arguments(text, expected):
     assert harvest.parse_command(text) == expected
 
 
-def test_storage_and_undo_are_append_only_and_scoped_to_chat(data, monkeypatch):
-    monkeypatch.setattr(store, "now_iso", lambda: NOW.isoformat())
-    harvest.append_entry(1, "picked", 3, "  recogí 3 naranjas  ")
-    harvest.append_entry(2, "watered", 1, "/watered")
-    harvest.append_entry(1, "removed", 1, "/removed 1")
+def test_storage_and_undo_are_append_only_and_scoped_to_chat(data):
+    harvest.append_entry(1, "picked", 3, "  recogí 3 naranjas  ", now=NOW)
+    harvest.append_entry(2, "watered", 1, "/watered", now=NOW)
+    harvest.append_entry(1, "removed", 1, "/removed 1", now=NOW)
     path = data / "harvest.jsonl"
     before = path.read_bytes()
     assert len(before.splitlines()) == 3 and before.endswith(b"\n")
@@ -96,6 +97,43 @@ def test_storage_and_undo_are_append_only_and_scoped_to_chat(data, monkeypatch):
     assert not harvest.undo(1)
     harvest.append_entry(1, "watered", 1, "he regado")
     assert [r["kind"] for r in harvest.entries(1)] == ["watered"]
+
+
+@pytest.mark.parametrize("count,expected", [("0", None), ("1", 1), ("10000", 10000), ("10001", None),
+                                           ("9" * 5000, None)])
+def test_harvest_parsers_bound_counts(count, expected):
+    result = ("picked", expected) if expected is not None else None
+    assert harvest.parse_command(f"/picked {count}") == result
+    assert harvest.parse_text(f"I picked {count} oranges") == result
+
+
+def test_harvest_limit_is_per_chat_and_day_and_shared_by_concurrent_updates(data):
+    for _ in range(24):
+        harvest.append_entry(1, "picked", 1, "/picked 1", now=NOW)
+        assert harvest.undo(1, now=NOW)
+    updates = [update(1, "/watered"), update(1, "picked 2"), update(1, "removed 1")]
+
+    async def record():
+        return await asyncio.gather(*(harvest.maybe_record(1, u.effective_message, now=NOW, command=i == 0)
+                                      for i, u in enumerate(updates)))
+
+    assert run(record()) == [True, True, True]
+    assert sum(u.effective_message.reply_text.await_args.args[0] == harvest.WRITE_LIMIT_NOTICE for u in updates) == 1
+    with pytest.raises(harvest.WriteLimitReached):
+        harvest.undo(1, now=NOW)
+    assert len(list(store._read(harvest.HARVEST_FILE))) == 50
+    harvest.append_entry(2, "picked", 1, "picked 1", now=NOW)
+    harvest.append_entry(1, "picked", 1, "picked 1", now=NOW + timedelta(days=1))
+
+
+@pytest.mark.parametrize("text,entities", [("picked 3", ()), ("/picked 3", (MessageEntity("bot_command", 0, 7),))])
+@pytest.mark.parametrize("ordinary,edited", [("message", "edited_message"), ("channel_post", "edited_channel_post")])
+def test_edited_harvest_updates_are_ignored(data, text, entities, ordinary, edited):
+    app = build_application(handlers(data).config)
+    message = Message(1, NOW, Chat(1, "private"), text=text, entities=entities)
+    message.set_bot(SimpleNamespace(username="CutieFarmBot"))
+    assert any(handler.check_update(Update(1, **{ordinary: message})) for handler in app.handlers[0])
+    assert not any(handler.check_update(Update(2, **{edited: message})) for handler in app.handlers[0])
 
 
 def add_scan(taken_at, labels, **flags):
