@@ -27,7 +27,8 @@ def _parser() -> argparse.ArgumentParser:
     source.add_argument("--fixture", choices=sorted(FIXTURES), help="use built-in made-up data")
     preview.add_argument("--html", action="store_true", help="print the Telegram HTML instead of plain text")
     preview.add_argument("--water", action="store_true", help="print the /water reply instead of the daily message")
-    sub.add_parser("seed-demo", help="write clearly marked demo data into the data folder ($CUTIEFARM_DATA)")
+    seed_demo = sub.add_parser("seed-demo", help="write clearly marked demo data into the data folder ($CUTIEFARM_DATA)")
+    seed_demo.add_argument("--week", action="store_true", help="include 7 days of scans and example harvest activity")
     return parser
 
 
@@ -113,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "seed-demo":
             from farm.bot.demo import seed
-            print(f"Demo data written to {seed()}")
+            print(f"Demo data written to {seed(week=args.week)}")
             return 0
         return preview(args) if args.command == "preview" else run()
     except MissingTokenError as exc:

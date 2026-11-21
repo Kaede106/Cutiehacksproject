@@ -67,10 +67,17 @@ Commands in Telegram:
 | `/start` | Subscribe this chat to the daily message (saved in `bot_state.json` in the data folder). |
 | `/status` | Send the message now. |
 | `/water` | Watering advice, with the inputs it used. |
+| `/picked 3` | Log 3 oranges picked today. |
+| `/removed 1` | Log 1 orange removed today. |
+| `/watered` | Log that you watered today. |
+| `/undo` | Undo this chat's last harvest log entry. |
+| `/week` | Compare the first and latest scans in the last 7 days and see this chat's harvest totals and watering days. |
 | `/stop` | Unsubscribe. |
 | `/help` | List the commands. |
 
-Any other text gets a one-line reply listing the commands.
+You can also log completed actions in English or Spanish, such as “I picked 3 oranges,” “quité 1 con hongo,” or “he regado.” Questions still go to the conversation handler.
+
+The bot appends harvest actions to `harvest.jsonl` in `CUTIEFARM_DATA` with `taken_at`, `chat_id`, `kind`, `count` and the original `text`. `/undo` appends an undo marker for the chat's most recent action. Weekly totals exclude undone actions. The original JSONL lines stay on disk.
 
 ### Buttons
 
@@ -102,7 +109,8 @@ Fixtures: `ripe-heavy`, `mold` (the landing-page example), `empty` (no fruit fou
 
 ## Demo tips
 
-- Judges will not wait until 9:00. Send `/status` and `/water` live.
+- Judges will not wait until 9:00. Send `/status`, `/water` and `/week` live.
+- Point `CUTIEFARM_DATA` at a separate demo folder and run `python -m farm.bot seed-demo --week` using the bot's venv. It adds seven days of marked demo scans and example harvest entries. Any chat can see the examples in that folder's `/week` reply.
 - Without the camera or the board, run `preview --fixture mold` on the projector, or write a demo data folder with the snippet below and point `CUTIEFARM_DATA` at it.
 - Simulated sensor readings are always labelled "(simulated)" in the message. Keep it that way: it is what makes the demo honest.
 - Set `DAILY_AT` a couple of minutes ahead and restart the bot to show the scheduled message arriving on its own.
@@ -181,7 +189,7 @@ They cover the composer, watering advice and forecast cache, schedule and config
 
 ## Files
 
-`compose.py` (message, pure), `irrigation.py` (watering advice, pure), `weather.py` (Open-Meteo and its cache), `app.py` (Telegram handlers and the daily job), `config.py`, `access.py`, `state.py`, `fixtures.py`, `__main__.py` (CLI).
+`compose.py` (message, pure), `irrigation.py` (watering advice, pure), `weather.py` (Open-Meteo and its cache), `app.py` (Telegram handlers and the daily job), `harvest.py` (action parser, harvest log and weekly summary), `config.py`, `access.py`, `state.py`, `fixtures.py`, `__main__.py` (CLI).
 
 ## Conversation (free text)
 

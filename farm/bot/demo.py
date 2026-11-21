@@ -1,8 +1,8 @@
 """Seed a data folder with clearly marked demo data, so the bot can be shown before the camera
 and the sensor board are connected.
 
-Every record it writes is marked: the scan has "demo": true (the message says so) and every
-sensor reading has "simulated": true. Point CUTIEFARM_DATA at a separate folder (for example
+Scans and harvest entries have "demo": true, and sensor readings have "simulated": true.
+Point CUTIEFARM_DATA at a separate folder (for example
 farm/data-demo) so demo data never mixes with real scans.
 """
 from __future__ import annotations
@@ -10,10 +10,10 @@ from __future__ import annotations
 import math
 import struct
 import zlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
-from farm.bot import fixtures
+from farm.bot import fixtures, harvest
 from farm.common import store
 
 
@@ -51,9 +51,31 @@ def _png(path: Path, size: int = 256) -> None:
                      + chunk(b"IDAT", zlib.compress(b"".join(rows), 9)) + chunk(b"IEND", b""))
 
 
-def seed(now: datetime | None = None) -> Path:
+def _seed_week(now: datetime) -> None:
+    # Counts in the six scans leading up to the usual mold fixture.
+    history = [(0, 2, 9, 0), (0, 3, 8, 0), (1, 4, 6, 1),
+               (1, 5, 4, 0), (2, 5, 3, 0), (3, 5, 2, 1)]
+    labels = ("ripe", "ripening", "unripe", "mold")
+    for days_ago, counts in zip(range(6, 0, -1), history):
+        fruits = [label for label, count in zip(labels, counts) for _ in range(count)]
+        scan = fixtures._scan(now - timedelta(days=days_ago), fruits)
+        for fruit in scan["fruits"]:
+            fruit["crop"] = None
+        store.append_scan(dict(scan, image=None, demo=True))
+
+    for days_ago, kind, count, text in (
+        (5, "watered", 1, "I watered"),
+        (3, "removed", 1, "removed the moldy one"),
+        (2, "picked", 1, "picked 1"),
+        (1, "watered", 1, "I watered"),
+    ):
+        taken_at = (now - timedelta(days=days_ago)).isoformat(timespec="seconds")
+        harvest.append_entry(None, kind, count, text, taken_at=taken_at, demo=True)
+
+
+def seed(now: datetime | None = None, *, week: bool = False) -> Path:
     """Write one demo scan (3 ready, 5 ripening, 1 possible mold) and 3 days of simulated
-    hot, dry sensor readings into the data folder. Returns the folder."""
+    hot, dry sensor readings. With week=True, add scan history and example harvest entries."""
     now = now or datetime.now().astimezone()
     folder = store.data_dir()
 
@@ -61,6 +83,8 @@ def seed(now: datetime | None = None) -> Path:
         reading = dict(reading, simulated=True)
         store.append_sensors(reading)
 
+    if week:
+        _seed_week(now)
     scan = dict(fixtures.mold(now).scan, demo=True)
     for fruit in scan["fruits"]:
         if fruit.get("crop"):
