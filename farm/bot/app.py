@@ -15,6 +15,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 
 from farm.common import store
 
+from . import harvest
 from .access import is_allowed, photo_path
 from .chat import Conversation, farm_context, keyword_intent, strip_html
 from .compose import Message, Photo, _mold_photos, compose
@@ -29,11 +30,16 @@ log = logging.getLogger("farm.bot")
 COMMANDS = [
     ("status", "Get today's message now"),
     ("water", "Watering advice and what it is based on"),
+    ("picked", "Log oranges picked, for example /picked 3"),
+    ("removed", "Log oranges removed, for example /removed 1"),
+    ("watered", "Log that you watered today"),
+    ("undo", "Undo this chat's last harvest log entry"),
+    ("week", "Show the last 7 days of scans and harvest activity"),
     ("start", "Get the message every morning"),
     ("stop", "Stop the morning message"),
     ("help", "What this bot does"),
 ]
-COMMANDS_LINE = "I understand /status, /water, /start, /stop and /help."
+COMMANDS_LINE = "I understand " + ", ".join(f"/{command}" for command, _ in COMMANDS[:-1]) + " and /help."
 MAX_HISTORY = 20_000  # sensor readings kept in memory; a week at one a minute is about 10,000
 
 
@@ -45,9 +51,7 @@ def clock(t) -> str:
 def sensor_history() -> list[dict]:
     """Every sensor reading, oldest first (only the newest MAX_HISTORY).
 
-    store.py has no public history reader yet, only latest_sensors(). This is the
-    one place that uses its private _read, so it is a one-line change once a
-    public store.sensor_history() exists.
+    store.py has no public sensor history reader yet, only latest_sensors().
     """
     return list(deque(store._read(store.SENSORS_FILE), maxlen=MAX_HISTORY))
 
@@ -164,14 +168,40 @@ class Handlers:
             "",
             "/status: what to do today, right now",
             "/water: watering advice and what it is based on",
+            "/picked 3, /removed 1, /watered: log what you did",
+            "/undo: undo this chat's last harvest log entry",
+            "/week: see the last 7 days of scans and harvest activity",
             f"/start: get it every day at {self._daily()}",
             "/stop: stop the daily message",
             "/help: this message",
         ]
         await update.effective_message.reply_text("\n".join(lines))
 
+    async def record_harvest(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self._allowed(update):
+            return
+        message = update.effective_message
+        if not await harvest.maybe_record(update.effective_chat.id, message, command=True):
+            await message.reply_text("Use /picked 3 or /removed 1 with a positive whole count, or /watered on its own.")
+
+    async def undo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self._allowed(update):
+            return
+        undone = await asyncio.to_thread(harvest.undo, update.effective_chat.id)
+        await update.effective_message.reply_text(
+            "Undid your last harvest log entry." if undone else "No harvest log entry to undo in this chat.")
+
+    async def week(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self._allowed(update):
+            return
+        now = datetime.now(self.config.timezone)
+        text = await asyncio.to_thread(harvest.week_summary, update.effective_chat.id, now)
+        await update.effective_message.reply_text(text, parse_mode=ParseMode.HTML)
+
     async def text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not self._allowed(update):
+            return
+        if await harvest.maybe_record(update.effective_chat.id, update.effective_message):
             return
         question = (update.effective_message.text or "").strip()
         chat_id = update.effective_chat.id
@@ -336,6 +366,9 @@ def build_application(config: Config) -> Application:
     app.add_handler(CommandHandler("status", handlers.status))
     app.add_handler(CommandHandler("help", handlers.help))
     app.add_handler(CommandHandler("water", handlers.water))
+    app.add_handler(CommandHandler(("picked", "removed", "watered"), handlers.record_harvest))
+    app.add_handler(CommandHandler("undo", handlers.undo))
+    app.add_handler(CommandHandler("week", handlers.week))
     app.add_handler(MessageHandler(filters.COMMAND, handlers.unknown))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.text))
     app.add_handler(MessageHandler(filters.PHOTO, handlers.photo))
