@@ -2,8 +2,8 @@
 import torch
 import torch.nn as nn
 
-from dataset import CitrusDataset
-from model import HealthClassifier
+from src.python.ml.image_classification.dataset import CitrusDataset
+from src.python.ml.image_classification.model import HealthClassifier
 
 from torch.utils.data import DataLoader
 

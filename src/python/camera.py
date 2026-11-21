@@ -1,6 +1,6 @@
 import cv2
-from ..ml.image_classification import initial_prediction
-from ..ml.irrigation_system import init_pred
+from python.ml.image_classification.initial_prediction import init_pred
+from python.ml.irrigation_system.init_pred import predict
 
 cap = cv2.VideoCapture(0)
 
