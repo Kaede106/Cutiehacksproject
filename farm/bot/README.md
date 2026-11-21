@@ -72,6 +72,12 @@ Commands in Telegram:
 
 Any other text gets a one-line reply listing the commands.
 
+### Buttons
+
+- **Watering details** replies with the same advice as `/water`.
+- **Mold photos** resends the photos shown with that status while they are still available from the latest scan. The button appears only when the status has mold photos.
+- **Remind me in 2 h** sends a fresh status to this chat in two hours and confirms the time in the bot's timezone. Tapping again replaces the pending reminder. Pending reminders are cleared when the bot restarts.
+
 ### Keeping it running on Windows
 
 The daily message only goes out while the bot is running and the laptop is awake. If the bot is down at 9:00, that day's message is skipped; `/status` still works once the bot is back.
