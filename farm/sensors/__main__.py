@@ -45,6 +45,18 @@ def _soil(args: argparse.Namespace) -> SoilCalibration:
     return soil
 
 
+def _water_queue() -> object:
+    """The watering command queue, capped by MAX_WATER_SECONDS (farm/irrigation_control.py)."""
+    from farm import irrigation_control as ic
+
+    try:
+        settings = ic.settings_from_env(os.environ)
+    except ic.SettingsError as e:
+        log.error("%s Fix it in farm/bot/.env.", e)
+        raise SystemExit(2)  # the hub's "fix the settings first" exit code
+    return ic.WaterQueue(settings.max_seconds, log=log)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m farm.sensors", description="CutieFarm sensor bridge")
     parser.add_argument("-v", "--verbose", action="store_true", help="debug logging")
@@ -78,7 +90,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "simulate":
             from farm.sensors.simulate import simulate
 
-            simulate(args.every, SoilCalibration(args.soil_dry, args.soil_wet), count=args.count, seed=args.seed)
+            simulate(args.every, SoilCalibration(args.soil_dry, args.soil_wet), count=args.count, seed=args.seed,
+                     water=_water_queue())
             return 0
         if args.command == "calibrate":
             from farm.sensors.calibrate import calibrate
@@ -87,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         from farm.sensors.bridge import listen
 
-        listen(args.port, args.baud, args.every, _soil(args))
+        listen(args.port, args.baud, args.every, _soil(args), water=_water_queue())
         return 0
     except KeyboardInterrupt:
         return 130

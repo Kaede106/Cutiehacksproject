@@ -36,6 +36,16 @@ Rules:
 - A value outside its plausible range (`SOIL` 0–65535, `T` −40–85, `H` 0–100, `W` 0–75) is logged and stored as null, while the rest of the line is kept.
 - The first line after connecting is dropped, because it may be the end of a line sent before the port opened.
 
+## Watering commands
+
+The bridge also runs the pump for the bot. Every second it checks `irrigation.jsonl` in the data folder for new commands (format: `farm/CONTRACT.md`). For each one it writes the line `WATER=<seconds>` to the board and appends a result to `irrigation_results.jsonl`: `sent`, then `done` when the board prints `#WATER_DONE <n>`. If no confirmation arrives within `seconds` + 10 s, the result is `no_ack`. Lines starting with `#WATER_` are watering replies, not sensor readings.
+
+- **No board connected:** each new command fails at once ("no board connected to the laptop"), so the bot can tell the grower.
+- **`simulate`:** each command is marked `"done", "simulated": true` straight away, and the simulated soil gets wetter. No water runs, and the bot says so.
+- **Stale commands are never run.** A command over 2 minutes old (for example, queued while the bridge was down) is marked `expired`.
+- **Length:** the bridge refuses runs longer than `MAX_WATER_SECONDS` (default 15, read from the environment or from `farm/bot/.env` through the hub), and never more than 30 s. The board has its own 30 s cap.
+- **The board must have the watering code.** The team's sketch doesn't read serial input yet: paste the code in [`arduino/WATER_SNIPPET.md`](arduino/WATER_SNIPPET.md). The reference sketch already has it (`USE_WATER 1`; motor driver E1 = 6, I1 = 4, I2 = 5). Until then, every watering ends as `no_ack` and nothing is logged as watered.
+
 ## What gets written
 
 `listen` writes the first reading straight away, then at most once every `--every` seconds (default 60). Readings in between are averaged per sensor, ignoring nulls (raw `SOIL` is averaged before converting). `taken_at` is the time of the newest reading in the average, and `raw` is that reading's line.
@@ -111,6 +121,8 @@ You can check the output in Serial Monitor at 9600 baud: you should see `# cutie
 | `protocol.py` | line parser, soil calibration, record builder |
 | `bridge.py` | port detection, line reading, averaging, the reconnecting `listen` loop |
 | `calibrate.py` | interactive dry/wet calibration |
-| `simulate.py` | simulated readings for demos |
+| `simulate.py` | simulated readings for demos, and simulated waterings |
+| `../irrigation_control.py` | the watering queue (`WaterQueue`) and safety rules, shared with the bot |
+| `arduino/WATER_SNIPPET.md` | watering code to paste into the team's sketch |
 | `__main__.py` | command line |
 | `tests/` | pytest; no hardware needed (the serial port is faked) |
