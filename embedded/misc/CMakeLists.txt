@@ -22,9 +22,12 @@ set(CMAKE_EXE_LINKER_FLAGS
 )
 
 add_executable(blink.elf
-    main.c
+    src/embedded.c
     startup.s
+
 )
+
+target_include_directories(blink.elf PRIVATE include)
 
 set_target_properties(blink.elf PROPERTIES
     SUFFIX ""
