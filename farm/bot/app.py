@@ -248,6 +248,8 @@ class Handlers:
         # Leave room for the quote even if every character takes two UTF-16 code units.
         quote = question if len(question) <= 2000 else question[:2000] + "…"
         await message.reply_text(f'You said: "{quote}"')
+        if await harvest.maybe_record(update.effective_chat.id, message, text=question):
+            return
         await self._answer(update, context, question)
 
     async def photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

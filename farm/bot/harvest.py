@@ -88,8 +88,9 @@ def undo(chat_id: int) -> bool:
         return True
 
 
-async def maybe_record(chat_id: int, message: Any, *, command: bool = False) -> bool:
-    text = message.text or ""
+async def maybe_record(chat_id: int, message: Any, *, command: bool = False, text: str | None = None) -> bool:
+    """Log a completed action stated in the message (or in `text`, e.g. a voice transcript)."""
+    text = message.text or "" if text is None else text
     parse = parse_command if command else parse_text
     action = parse(text)
     if action is None:

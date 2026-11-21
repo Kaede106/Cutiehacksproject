@@ -180,3 +180,17 @@ def test_voice_respects_allowlist(make_handlers):
     update.effective_message.reply_text.assert_not_called()
     context.bot.send_message.assert_not_called()
     assert requests == []
+
+
+def test_voice_can_log_a_harvest(make_handlers, tmp_path):
+    def respond(request):
+        assert str(request.url) == TRANSCRIPTION_URL, "a harvest log must not reach the chat model"
+        return httpx.Response(200, json={"text": "He recogido 3 naranjas"})
+
+    handlers, requests = make_handlers(respond)
+    update, _ = fake_update()
+    message = update.effective_message
+    asyncio.run(handlers.voice(update, SimpleNamespace(bot=AsyncMock())))
+    replies = [c.args[0] for c in message.reply_text.call_args_list]
+    assert replies == ['You said: "He recogido 3 naranjas"', "Logged: 3 picked today."]
+    assert '"kind":"picked"' in (tmp_path / "harvest.jsonl").read_text(encoding="utf-8").replace(" ", "")
