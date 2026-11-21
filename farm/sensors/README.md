@@ -8,6 +8,9 @@ soil probe ─► Arduino (A0) ─USB─► python -m farm.sensors listen ─►
 
 ## Line protocol
 
+The team's sketch (`sketch_nov21a`) prints human-readable lines, and the bridge accepts those as they are: `Temperature: 23.40 C`, `Humidity: 55.00 %`, `Raw: 612 | Moisture: 45%` (the raw value is used, and the bridge converts it with `--soil-dry`/`--soil-wet`). `Failed to read sensor` and `Ready` are skipped. Any other line must follow the protocol below.
+
+
 One line per reading, ending in `\n` (`\r\n` is fine): `KEY=value` pairs separated by `;`, at 9600 baud.
 
 ```

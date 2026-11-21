@@ -1,8 +1,23 @@
 #include <stdint.h>
-#include <../include/stm32l476xx.h>
+#include "../include/stm32l476xx.h"
 
 #define ADC_DRY 2400  // Replace with your measured dry air ADC value
+<<<<<<< HEAD
+#define ADC_WET 1100
+void delay_cycles(volatile uint32_t count)
+{
+    while (count--) {
+        __NOP();
+    }
+}
+void uart_init(void)
+{
+    // Enable GPIOA and USART2 clocks
+    RCC->AHB2ENR  |= RCC_AHB2ENR_GPIOAEN;
+    RCC->APB1ENR1 |= RCC_APB1ENR1_USART2EN;
+=======
 #define ADC_WET 1200
+>>>>>>> refs/remotes/origin/main
 
 #define DHT_PIN       0U
 #define DHT_PIN_MASK  (1U << DHT_PIN)
@@ -61,6 +76,50 @@ int dht_wait_level(uint8_t level, uint32_t timeout_us) {
 	return 1;
 }
 
+<<<<<<< HEAD
+void adc_init(void)
+{
+    RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_ADCEN;
+
+    // 2. Configure PA0 as Analog Mode (11), no pull-up/pull-down, and close analog switch
+    GPIOA->MODER |=  (GPIO_MODER_MODE0_0 | GPIO_MODER_MODE0_1);
+    GPIOA->PUPDR &= ~GPIO_PUPDR_PUPD0_Msk;
+    GPIOA->ASCR  |=  GPIO_ASCR_ASC0; // Required on STM32L476xx for ADC analog input
+
+    // 3. Ensure ADC is disabled before configuring clock or calibrating
+    if (ADC1->CR & ADC_CR_ADEN) {
+        ADC1->CR |= ADC_CR_ADDIS;
+        while (ADC1->CR & ADC_CR_ADEN);
+    }
+
+    // 4. Select synchronous HCLK/1 clock mode (avoids RCC->CCIPR async clock stalls)
+    ADC123_COMMON->CCR &= ~ADC_CCR_CKMODE_Msk;
+    ADC123_COMMON->CCR |=  ADC_CCR_CKMODE_0;
+
+    // 5. Exit Deep Power-Down mode and enable ADC internal voltage regulator
+    ADC1->CR &= ~ADC_CR_DEEPPWD;
+    ADC1->CR |=  ADC_CR_ADVREGEN;
+    for (volatile int i = 0; i < 2000; i++); // Wait >20 us for regulator startup
+
+    // 6. Calibrate ADC in Single-Ended mode
+    ADC1->CR &= ~ADC_CR_ADCALDIF;
+    ADC1->CR |=  ADC_CR_ADCAL;
+    while (ADC1->CR & ADC_CR_ADCAL);
+
+    // 7. Configure Channel 5 (PA0) as 1st conversion in regular sequence
+    ADC1->SQR1 &= ~ADC_SQR1_L_Msk;           // Sequence length = 1 conversion
+    ADC1->SQR1 &= ~ADC_SQR1_SQ1_Msk;
+    ADC1->SQR1 |=  (5U << ADC_SQR1_SQ1_Pos); // Channel 5 = PA0
+
+    // 8. Set longer sample time for Channel 5 (247.5 cycles) for high-impedance sensors
+    ADC1->SMPR1 &= ~ADC_SMPR1_SMP5_Msk;
+    ADC1->SMPR1 |=  (6U << ADC_SMPR1_SMP5_Pos);
+
+    // 9. Clear ADRDY flag, enable ADC, and wait until ready
+    ADC1->ISR |= ADC_ISR_ADRDY;
+    ADC1->CR  |= ADC_CR_ADEN;
+    while (!(ADC1->ISR & ADC_ISR_ADRDY));
+=======
 int dht_read(uint8_t data[5]) {
 	uint32_t start;
 	uint32_t pulse_cycles;
@@ -124,6 +183,7 @@ int dht_read(uint8_t data[5]) {
 		return 0;
 
 	return 1;
+>>>>>>> refs/remotes/origin/main
 }
 
 void delay_cycles(volatile uint32_t count) {
@@ -159,6 +219,21 @@ void uart_putc(char c) {
 	USART2->TDR = c;
 }
 
+<<<<<<< HEAD
+int main(void)
+{
+    uart_init();
+    uart_print("Test");
+    adc_init();
+    for (;;) { 
+        uint32_t raw = adc_read();
+        uint32_t moisture = get_moisture_percent(raw);
+        uart_init();
+        uart_print("Moisture level: ");
+        uart_print_num((int)moisture);
+        uart_print("\r\n");
+   }
+=======
 char uart_getc(void) {
 	while (!(USART2->ISR & (1U << 5)))
 		;
@@ -295,4 +370,5 @@ int main(void) {
 		// DHT11 should not be read too frequently
 		delay_ms(2000);
 	}
+>>>>>>> refs/remotes/origin/main
 }
