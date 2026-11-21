@@ -186,6 +186,12 @@ Besides the commands, the bot answers plain questions in the grower's language, 
 - **Limits:** `CHAT_DAILY_LIMIT` questions per chat per day (default 30) and `CHAT_GLOBAL_DAILY_LIMIT` for the whole bot (default 500), because anyone with the landing page's QR code can chat. Past the limit, and whenever the API fails, the bot falls back to keywords.
 - **What leaves the laptop:** the question, that chat's recent turns and the farm summary go to OpenAI. Photos never do.
 
+## Voice notes
+
+Send a Telegram voice note or audio file up to 60 seconds long. The bot quotes what it heard, then answers as if you typed the question. Set `OPENAI_API_KEY` to enable this. `OPENAI_TRANSCRIBE_MODEL` defaults to `gpt-4o-mini-transcribe` and can be overridden in `.env`. If voice is unavailable, try typing your question or using `/status`, `/water` or `/help`.
+
+**Privacy:** The bot sends audio to OpenAI for transcription. When it uses the model to answer, it sends the transcript in the same way it sends a typed question. Each transcription attempt and each model answer use one call from the shared `CHAT_DAILY_LIMIT` and `CHAT_GLOBAL_DAILY_LIMIT` budgets.
+
 ## Photos and instant mold alerts
 
 - **Send the bot a photo of an orange.** It runs the same colour check as the web scanner (`farm/bot/peel.py`, a port of `web/src/scanner/classifier.js`) on the centre of the photo, on the laptop, and replies with the state: unripe, ripening, ready to pick or possible mold. The photo is never sent to OpenAI. If the chat has been talking in another language, the model only rewords the fixed reply into that language.

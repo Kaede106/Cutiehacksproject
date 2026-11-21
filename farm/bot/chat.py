@@ -23,6 +23,8 @@ from typing import Any, Mapping
 
 import httpx
 
+from .voice import Transcriber
+
 log = logging.getLogger("farm.bot.chat")
 
 OPENAI_URL = "https://api.openai.com/v1/chat/completions"
@@ -160,6 +162,7 @@ class Conversation:
         env = os.environ if env is None else env
         self.api_key = (env.get("OPENAI_API_KEY") or "").strip()
         self.model = (env.get("OPENAI_MODEL") or DEFAULT_MODEL).strip()
+        self.transcriber = Transcriber(self.api_key, env.get("OPENAI_TRANSCRIBE_MODEL"), client)
         self.limits = Limits(int(env.get("CHAT_DAILY_LIMIT") or 30), int(env.get("CHAT_GLOBAL_DAILY_LIMIT") or 500))
         self.history: dict[int, deque] = defaultdict(lambda: deque(maxlen=HISTORY_TURNS))
         self._client = client
