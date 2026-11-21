@@ -10,8 +10,8 @@ Arduino ─► sensor bridge ──► sensors.jsonl ┘
 
 | Folder | Owner | Writes | Reads |
 |---|---|---|---|
-| vision runner (teammate, ML/CV) | teammate | `scans.jsonl`, `scans/*.jpg` | — |
-| sensor bridge (teammate, Arduino) | teammate | `sensors.jsonl` | — |
+| vision program (teammate, optional, via VISION_COMMAND) | teammate | `scans.jsonl`, `scans/*.jpg` | — |
+| `farm/sensors/` | sensor bridge (+ reference Arduino sketch) | `sensors.jsonl` | — |
 | `farm/bot/` | Telegram bot | its own `bot_state.json` | both files |
 | `farm/common/` | shared, change only by agreement | — | — |
 | `ml/image-classification/` | **the teammate's CNN. Do not edit.** | | |
