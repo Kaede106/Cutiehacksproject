@@ -2,13 +2,14 @@
 import asyncio
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 from zoneinfo import ZoneInfo
 
 import pytest
 from telegram.error import Forbidden
 
 from farm.bot.app import COMMANDS_LINE, Handlers, build_message
+from farm.bot.chat import Conversation
 from farm.bot.config import load_config
 from farm.bot.state import State
 from farm.common import store
@@ -29,8 +30,8 @@ def handlers(data, allowed=None):
     return Handlers(load_config(env), State(data / "bot_state.json"))
 
 
-def update(chat_id, text="/start"):
-    return SimpleNamespace(effective_chat=SimpleNamespace(id=chat_id),
+def update(chat_id, text="/start", chat_type="private"):
+    return SimpleNamespace(effective_chat=SimpleNamespace(id=chat_id, type=chat_type),
                            effective_message=SimpleNamespace(text=text, reply_text=AsyncMock()))
 
 
@@ -67,10 +68,22 @@ def test_start_subscribes_an_allowed_chat(data):
     assert "ALLOWED_CHAT_IDS" not in reply
 
 
-def test_start_without_allowlist_tells_the_chat_its_id(data):
+def test_start_without_allowlist_logs_the_chat_id(data, caplog):
     h, u = handlers(data), update(555)
-    run(h.start(u, context()))
-    assert "ALLOWED_CHAT_IDS=555" in u.effective_message.reply_text.call_args.args[0]
+    with caplog.at_level("INFO", logger="farm.bot"):
+        run(h.start(u, context()))
+    assert "ALLOWED_CHAT_IDS=555" in caplog.text
+    assert "ALLOWED_CHAT_IDS" not in u.effective_message.reply_text.call_args.args[0]
+
+
+@pytest.mark.parametrize("chat_type", ["group", "supergroup", "channel"])
+def test_public_mode_rejects_non_private_chats(data, chat_type):
+    u, ctx = update(-222, "hola", chat_type), context()
+    run(handlers(data).text(u, ctx))
+    u.effective_message.reply_text.assert_not_called()
+    ctx.bot.send_chat_action.assert_not_called()
+    run(handlers(data, allowed="-222").text(u, ctx))
+    u.effective_message.reply_text.assert_awaited_once()
 
 
 def test_stop_unsubscribes(data):
@@ -93,6 +106,33 @@ def test_free_text_without_ai_and_no_keyword_lists_commands(data):
     run(handlers(data).text(u, context()))
     reply = u.effective_message.reply_text.call_args.args[0]
     assert reply.startswith("Ask me about your oranges") and "/status" in reply
+
+
+def test_exhausted_quota_prefers_keyword_answer(data):
+    h = handlers(data)
+    client = Mock(post=AsyncMock())
+    h.conversation = Conversation({"OPENAI_API_KEY": "fake-key", "CHAT_DAILY_LIMIT": "0"}, client)
+    u, ctx = update(1, "When should I water?"), context()
+    run(h.text(u, ctx))
+    assert "watering advice" in ctx.bot.send_message.await_args.args[1]
+    u.effective_message.reply_text.assert_not_called()
+    client.post.assert_not_called()
+
+
+def test_farm_context_failure_falls_back_without_model_call(data, monkeypatch, caplog):
+    h = handlers(data)
+    h.conversation = Conversation({"OPENAI_API_KEY": "fake-key"})
+    h.conversation.reply = AsyncMock()
+
+    def malformed(now):
+        raise ValueError("malformed data")
+
+    monkeypatch.setattr(h, "_farm_context", malformed)
+    u, ctx = update(1, "any mold?"), context()
+    run(h.text(u, ctx))
+    h.conversation.reply.assert_not_called()
+    ctx.bot.send_message.assert_awaited_once()
+    assert "Could not prepare a chat answer" in caplog.text
 
 
 def test_status_sends_text_and_the_mold_photo(data):

@@ -36,14 +36,14 @@ The bot has its own venv. Do not share it with other programs.
 1. In Telegram, open a chat with **@BotFather** and send `/newbot`.
 2. Pick a display name (for example "CutieFarm") and a username ending in `bot` (for example `cutiefarm_demo_bot`).
 3. BotFather replies with a token like `123456789:AA...`. Put it in `farm/bot/.env` as `TELEGRAM_BOT_TOKEN=...`. Treat the token like a password: anyone who has it can act as the bot. If it leaks, send `/revoke` to BotFather.
-4. Start the bot (below), open your bot in Telegram and send `/start`. If `ALLOWED_CHAT_IDS` is empty, the reply tells you your chat ID. Put it in `.env` as `ALLOWED_CHAT_IDS=<id>` and restart, so nobody else can use the bot.
+4. Start the bot (below), open your bot in Telegram and send `/start`. If `ALLOWED_CHAT_IDS` is empty, the bot log shows the chat ID for your `/start` message. Put it in `.env` as `ALLOWED_CHAT_IDS=<id>` and restart to restrict access to that chat.
 
 ### `.env` settings
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | (required to run) | From @BotFather. Never printed or logged. |
-| `ALLOWED_CHAT_IDS` | empty: anyone | Comma-separated chat IDs. Others are ignored, with no reply. |
+| `ALLOWED_CHAT_IDS` | empty: any private chat | Comma-separated chat IDs. Others are ignored, with no reply. |
 | `DAILY_AT` | `09:00` | Daily message time, 24-hour. |
 | `TIMEZONE` | `America/Los_Angeles` | Time zone for `DAILY_AT` and the times in messages. |
 | `CUTIEFARM_DATA` | `farm/data` | Data folder shared with the camera and sensor programs. |
@@ -67,10 +67,23 @@ Commands in Telegram:
 | `/start` | Subscribe this chat to the daily message (saved in `bot_state.json` in the data folder). |
 | `/status` | Send the message now. |
 | `/water` | Watering advice, with the inputs it used. |
+| `/picked 3` | Log 3 oranges picked today. |
+| `/removed 1` | Log 1 orange removed today. |
+| `/watered` | Log that you watered today. |
+| `/undo` | Undo this chat's last harvest log entry. |
+| `/week` | Compare the first and latest scans in the last 7 days and see this chat's harvest totals and watering days. |
 | `/stop` | Unsubscribe. |
 | `/help` | List the commands. |
 
-Any other text gets a one-line reply listing the commands.
+You can also log completed actions in English or Spanish, such as “I picked 3 oranges,” “quité 1 con hongo,” or “he regado.” Questions still go to the conversation handler.
+
+The bot appends harvest actions to `harvest.jsonl` in `CUTIEFARM_DATA` with `taken_at`, `chat_id`, `kind`, `count` and the original `text`. `/undo` appends an undo marker for the chat's most recent action. Weekly totals exclude undone actions. The original JSONL lines stay on disk.
+
+### Buttons
+
+- **Watering details** replies with the same advice as `/water`.
+- **Mold photos** resends the photos shown with that status while they are still available from the latest scan. The button appears only when the status has mold photos.
+- **Remind me in 2 h** sends a fresh status to this chat in two hours and confirms the time in the bot's timezone. Tapping again replaces the pending reminder. Pending reminders are cleared when the bot restarts.
 
 ### Keeping it running on Windows
 
@@ -96,7 +109,8 @@ Fixtures: `ripe-heavy`, `mold` (the landing-page example), `empty` (no fruit fou
 
 ## Demo tips
 
-- Judges will not wait until 9:00. Send `/status` and `/water` live.
+- Judges will not wait until 9:00. Send `/status`, `/water` and `/week` live.
+- Point `CUTIEFARM_DATA` at a separate demo folder and run `python -m farm.bot seed-demo --week` using the bot's venv. It adds seven days of marked demo scans and example harvest entries. Any chat can see the examples in that folder's `/week` reply.
 - Without the camera or the board, run `preview --fixture mold` on the projector, or write a demo data folder with the snippet below and point `CUTIEFARM_DATA` at it.
 - Simulated sensor readings are always labelled "(simulated)" in the message. Keep it that way: it is what makes the demo honest.
 - Set `DAILY_AT` a couple of minutes ahead and restart the bot to show the scheduled message arriving on its own.
@@ -175,7 +189,7 @@ They cover the composer, watering advice and forecast cache, schedule and config
 
 ## Files
 
-`compose.py` (message, pure), `irrigation.py` (watering advice, pure), `weather.py` (Open-Meteo and its cache), `app.py` (Telegram handlers and the daily job), `config.py`, `access.py`, `state.py`, `fixtures.py`, `__main__.py` (CLI).
+`compose.py` (message, pure), `irrigation.py` (watering advice, pure), `weather.py` (Open-Meteo and its cache), `app.py` (Telegram handlers and the daily job), `harvest.py` (action parser, harvest log and weekly summary), `config.py`, `access.py`, `state.py`, `fixtures.py`, `__main__.py` (CLI).
 
 ## Conversation (free text)
 
@@ -185,3 +199,14 @@ Besides the commands, the bot answers plain questions in the grower's language, 
 - **With `OPENAI_API_KEY` set: an OpenAI model** (default `OPENAI_MODEL=gpt-6-luna`) answers anything else. It only sees a text summary of the latest scan (counts, each orange's label, confidence and rough position in the picture), the latest sensor reading and the watering advice. It is told to answer only from that data and to say when the data is demo or simulated. It keeps the last 6 turns of each chat in memory, so follow-ups work.
 - **Limits:** `CHAT_DAILY_LIMIT` questions per chat per day (default 30) and `CHAT_GLOBAL_DAILY_LIMIT` for the whole bot (default 500), because anyone with the landing page's QR code can chat. Past the limit, and whenever the API fails, the bot falls back to keywords.
 - **What leaves the laptop:** the question, that chat's recent turns and the farm summary go to OpenAI. Photos never do.
+
+## Voice notes
+
+Send a Telegram voice note or audio file up to 60 seconds long. The bot quotes what it heard, then answers as if you typed the question. Set `OPENAI_API_KEY` to enable this. `OPENAI_TRANSCRIBE_MODEL` defaults to `gpt-4o-mini-transcribe` and can be overridden in `.env`. If voice is unavailable, try typing your question or using `/status`, `/water` or `/help`.
+
+**Privacy:** The bot sends audio to OpenAI for transcription. When it uses the model to answer, it sends the transcript in the same way it sends a typed question. Each transcription attempt and each model answer use one call from the shared `CHAT_DAILY_LIMIT` and `CHAT_GLOBAL_DAILY_LIMIT` budgets.
+
+## Photos and instant mold alerts
+
+- **Send the bot a photo of an orange.** It runs the same colour check as the web scanner (`farm/bot/peel.py`, a port of `web/src/scanner/classifier.js`) on the centre of the photo, on the laptop, and replies with the state: unripe, ripening, ready to pick or possible mold. The photo is never sent to OpenAI. If the chat has been talking in another language, the model only rewords the fixed reply into that language.
+- **Instant mold alerts.** Every 30 seconds the bot checks for a new scan. If it has possible mold, subscribers get an alert right away, with the photo, instead of waiting for 9:00. The scan that is already there when the bot starts doesn't trigger an alert. Try it with `python -m farm.bot seed-demo`, which writes a new demo scan with one moldy orange.

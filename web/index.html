@@ -168,22 +168,138 @@
       <section class="water wrap" aria-labelledby="water-title">
         <h2 id="water-title">Watering, worked out for you</h2>
         <div class="water-body">
-          <p>Citrus trees don’t want water on a fixed schedule. A hot, dry, windy week can need far more water than a cool one.</p>
-          <p>So the daily message suggests how often to water, from twice a week to every two weeks or not at all, and names the next day. Soil moisture decides first: if the ground is dry, the answer is today. Otherwise the temperature, humidity, wind and the weather forecast set the pace.</p>
-          <figure class="water-week" aria-labelledby="water-week-caption">
-            <figcaption id="water-week-caption">Example: a hot, dry week, so water twice</figcaption>
-            <ol class="week">
-            <li><span class="day">Mon</span></li>
-            <li><span class="day">Tue</span></li>
-            <li><span class="day">Wed</span></li>
-            <li class="is-water"><svg class="drop" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.5c3.6 5 6.5 8.6 6.5 12a6.5 6.5 0 0 1-13 0c0-3.4 2.9-7 6.5-12Z"/></svg><span class="day">Thu</span><span class="sr-only">: water</span></li>
-            <li><span class="day">Fri</span></li>
-            <li><span class="day">Sat</span></li>
-            <li class="is-water"><svg class="drop" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.5c3.6 5 6.5 8.6 6.5 12a6.5 6.5 0 0 1-13 0c0-3.4 2.9-7 6.5-12Z"/></svg><span class="day">Sun</span><span class="sr-only">: water</span></li>
-            </ol>
-          </figure>
+          <p>The daily message checks soil moisture first. When the soil is moist enough, the week’s estimated water demand sets the schedule.</p>
+          <div class="watering-sim" id="watering-sim" hidden>
+            <h3>Try the watering rule</h3>
+            <p class="watering-sim-context">Simulate a week starting Monday, June 22 at 34°N.</p>
+            <div class="watering-sim-inputs">
+              <div class="watering-sim-field">
+                <label for="watering-soil">Soil moisture</label>
+                <input id="watering-soil" name="soil" type="range" min="0" max="100" value="48" data-unit="%">
+                <span aria-hidden="true"></span>
+              </div>
+              <div class="watering-sim-field">
+                <label for="watering-rain">Weekly rain forecast</label>
+                <input id="watering-rain" name="rain" type="range" min="0" max="60" value="0" data-unit=" mm">
+                <span aria-hidden="true"></span>
+              </div>
+              <div class="watering-sim-field">
+                <label for="watering-high">Max air temperature</label>
+                <input id="watering-high" name="high" type="range" min="-5" max="45" value="34" data-unit=" °C">
+                <span aria-hidden="true"></span>
+              </div>
+              <div class="watering-sim-field">
+                <label for="watering-low">Min air temperature</label>
+                <input id="watering-low" name="low" type="range" min="-5" max="45" value="17" data-unit=" °C">
+                <span aria-hidden="true"></span>
+              </div>
+              <div class="watering-sim-field">
+                <label for="watering-humidity">Humidity</label>
+                <input id="watering-humidity" name="humidity" type="range" min="0" max="100" value="45" data-unit="%">
+                <span aria-hidden="true"></span>
+              </div>
+              <div class="watering-sim-field">
+                <label for="watering-wind">Wind speed</label>
+                <input id="watering-wind" name="wind" type="range" min="0" max="12" step="0.5" value="2" data-unit=" m/s">
+                <span aria-hidden="true"></span>
+              </div>
+            </div>
+            <div class="watering-sim-result">
+              <p class="watering-sim-cadence" data-cadence></p>
+              <p class="watering-sim-next">Next watering <strong data-next></strong></p>
+              <p class="watering-sim-reason" data-reason></p>
+            </div>
+            <p class="sr-only" aria-live="polite" aria-atomic="true" data-announcement></p>
+            <figure class="watering-sim-week">
+              <figcaption data-week-caption></figcaption>
+              <ol data-week role="list"></ol>
+            </figure>
+          </div>
           <p class="water-note">It’s a rule of thumb with settings you can change, not a replacement for checking the soil with your hand.</p>
         </div>
+        <script type="module">
+          import { addDays, simulateWatering } from './src/watering.js';
+
+          const demo = document.getElementById('watering-sim');
+          const inputs = [...demo.querySelectorAll('input[type="range"]')];
+          const high = demo.querySelector('#watering-high');
+          const low = demo.querySelector('#watering-low');
+          const cadenceLabel = demo.querySelector('[data-cadence]');
+          const nextLabel = demo.querySelector('[data-next]');
+          const reasonLabel = demo.querySelector('[data-reason]');
+          const announcement = demo.querySelector('[data-announcement]');
+          const weekCaption = demo.querySelector('[data-week-caption]');
+          const week = demo.querySelector('[data-week]');
+          const today = new Date('2026-06-22');
+          const fullDate = new Intl.DateTimeFormat('en-US', {
+            weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC',
+          });
+          const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' });
+          let visibleCadence;
+          let announcedCadence;
+
+          function drawWeek(todaysWatering, intervalDays) {
+            weekCaption.textContent = todaysWatering ? 'Today and the next six days' : 'Next seven days';
+            const start = todaysWatering ? 0 : 1;
+            const days = [];
+            for (let offset = start; offset < start + 7; offset++) {
+              const day = addDays(today, offset);
+              const water = offset === 0 || (intervalDays !== null && offset % intervalDays === 0);
+              const cell = document.createElement('li');
+              const date = document.createElement('time');
+              const spokenDate = document.createElement('span');
+              const shortDate = document.createElement('span');
+              date.dateTime = day.toISOString().slice(0, 10);
+              spokenDate.className = 'sr-only';
+              spokenDate.textContent = fullDate.format(day);
+              shortDate.setAttribute('aria-hidden', 'true');
+              shortDate.append(weekday.format(day), document.createElement('br'), String(day.getUTCDate()));
+              date.append(spokenDate, shortDate);
+              cell.append(date);
+              if (water) {
+                const marker = document.createElement('span');
+                marker.textContent = 'Water';
+                cell.className = 'watering-sim-day-active';
+                cell.append(marker);
+              }
+              days.push(cell);
+            }
+            week.replaceChildren(...days);
+          }
+
+          function render(changedInput) {
+            if (low.valueAsNumber > high.valueAsNumber) {
+              const otherInput = changedInput === low ? high : low;
+              otherInput.value = changedInput.value;
+            }
+
+            const readings = Object.fromEntries(inputs.map((input) => {
+              const value = input.value + input.dataset.unit;
+              input.nextElementSibling.textContent = value;
+              input.setAttribute('aria-valuetext', value);
+              return [input.name, input.valueAsNumber];
+            }));
+            const { cadence, nextDue, intervalDays, reason } = simulateWatering(readings, today);
+            reasonLabel.textContent = reason;
+            if (visibleCadence === cadence) return;
+
+            visibleCadence = cadence;
+            const todaysWatering = cadence === 'water today';
+            cadenceLabel.textContent = cadence[0].toUpperCase() + cadence.slice(1);
+            nextLabel.textContent = nextDue ? fullDate.format(nextDue) : 'None scheduled';
+            drawWeek(todaysWatering, intervalDays);
+          }
+
+          render();
+          announcedCadence = visibleCadence;
+          demo.hidden = false;
+          demo.addEventListener('input', (event) => render(event.target));
+          demo.addEventListener('change', () => {
+            if (announcedCadence === visibleCadence) return;
+            announcedCadence = visibleCadence;
+            announcement.textContent = `${cadenceLabel.textContent}. Next watering: ${nextLabel.textContent}. ${reasonLabel.textContent}`;
+          });
+        </script>
       </section>
 
       <section class="demo" id="demo" aria-labelledby="demo-title">

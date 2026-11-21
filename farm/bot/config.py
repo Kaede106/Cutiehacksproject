@@ -24,6 +24,7 @@ MISSING_TOKEN = (
 )
 
 _TOKEN_RE = re.compile(r"^\d{5,}:[A-Za-z0-9_-]{30,}$")
+_LOG_SECRET_RE = re.compile(r"bot\d{5,}:[A-Za-z0-9_%-]{30,}|sk-[A-Za-z0-9_-]{20,}")
 _TIME_RE = re.compile(r"^(\d{1,2}):(\d{2})$")
 
 
@@ -41,7 +42,7 @@ class Config:
     token: str = field(repr=False)
     daily_at: time  # timezone-aware
     timezone: ZoneInfo
-    allowed_chat_ids: frozenset[int] | None  # None: anyone may use the bot
+    allowed_chat_ids: frozenset[int] | None  # None: anyone may use the bot in a private chat
     scan_command: str | None = None  # how to run a scan by hand, shown in "no scan" messages
     irrigation: IrrigationConfig = IrrigationConfig()
 
@@ -152,13 +153,13 @@ class RedactingFormatter(logging.Formatter):
 
     def __init__(self, fmt: str, secrets: list[str]) -> None:
         super().__init__(fmt)
-        self._secrets = [s for s in secrets if s]
+        self._secrets = sorted((s for s in secrets if s), key=len, reverse=True)
 
     def format(self, record: logging.LogRecord) -> str:
         text = super().format(record)
         for secret in self._secrets:
             text = text.replace(secret, "[redacted]")
-        return text
+        return _LOG_SECRET_RE.sub("[redacted]", text)
 
 
 def setup_logging(secrets: list[str], level: int = logging.INFO) -> None:

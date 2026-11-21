@@ -188,9 +188,9 @@ def _hargreaves_week(recent: list[dict], today: date, config: IrrigationConfig,
     lat = config.latitude
     if lat is None:
         lat = ASSUMED_LATITUDE
-        lat_note = f"assumed latitude {lat:g} (set FARM_LAT)"
+        lat_note = f"assumed latitude {lat:.2f} (set FARM_LAT)"
     else:
-        lat_note = f"latitude {lat:g}"
+        lat_note = f"latitude {lat:.2f}"
 
     by_day: dict[date, list[dict]] = {}
     for r in temps:
@@ -335,9 +335,12 @@ def _latest_soil(recent: list[dict], today: date, now: datetime | None) -> dict 
 
 
 def _number(value: Any) -> float | None:
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != value:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    return float(value)
+    try:
+        return float(value) if math.isfinite(value) else None
+    except OverflowError:
+        return None
 
 
 # --- wording -------------------------------------------------------------------

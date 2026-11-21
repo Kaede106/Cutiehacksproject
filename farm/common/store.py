@@ -45,15 +45,17 @@ def _read(name: str) -> Iterator[dict[str, Any]]:
     path = data_dir() / name
     if not path.exists():
         return
-    with open(path, encoding="utf-8") as f:
+    with open(path, encoding="utf-8", errors="replace") as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
             try:
-                yield json.loads(line)
-            except json.JSONDecodeError:
+                record = json.loads(line)
+            except (ValueError, RecursionError):
                 continue  # a line still being written, or a corrupt one
+            if isinstance(record, dict):
+                yield record
 
 
 def _latest(name: str, max_age: timedelta | None) -> dict[str, Any] | None:
@@ -62,7 +64,10 @@ def _latest(name: str, max_age: timedelta | None) -> dict[str, Any] | None:
         latest = record
     if latest is None or max_age is None:
         return latest
-    taken = datetime.fromisoformat(latest["taken_at"])
+    try:
+        taken = datetime.fromisoformat(latest.get("taken_at")).astimezone(timezone.utc)
+    except (TypeError, ValueError, OverflowError, OSError):
+        return None
     if datetime.now(timezone.utc) - taken > max_age:
         return None
     return latest
