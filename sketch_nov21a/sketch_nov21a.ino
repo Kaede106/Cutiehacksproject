@@ -1,25 +1,16 @@
+#include <DHT11.h>
+#include <DHT.h>
+
+#define DHTPIN 12
+#define DHTTYPE DHT11
+
 #define STEPS 32  // Number of steps per revolution of Internal shaft
 #define E1 6      // Activer la broche pour le moteur
 #define I1 4      // Axe de commande 1 pour moteur
 #define I2 5      // Broche de commande 2 pour moteur
+#define TEMP_SENSOR A1
 #include "Stepper.h"
 int Steps2Take;  // 2048 = 1 Revolution
-
-#define DHT11_PIN 1  // pin A0
-byte read_dht11_dat() {
-  byte i = 0;
-  byte result = 0;
-  for (i = 0; i < 8; i++) {
-    while (!(PINF & _BV(DHT11_PIN)))
-      ;  // wait for 50us
-    delayMicroseconds(30);
-    if (PINF & _BV(DHT11_PIN))
-      result |= (1 << (7 - i));
-    while ((PINF & _BV(DHT11_PIN)))
-      ;  // wait '1' finish
-  }
-  return result;
-}
 
 const int SENSOR_PIN = A0;
 
@@ -31,19 +22,51 @@ const int ledPin = 3;
 
 Stepper small_stepper(STEPS, 8, 10, 9, 11);
 
+//DHT11 dht11(12);
+DHT dht(DHTPIN, DHTTYPE);
+
 void setup() {
   Serial.begin(9600);
   pinMode(ledPin, OUTPUT);
   pinMode(E1, OUTPUT);
   pinMode(I1, OUTPUT);
   pinMode(I2, OUTPUT);
-  DDRF |= _BV(DHT11_PIN);
-  PORTF |= _BV(DHT11_PIN);
-  Serial.println("Ready");
+  dht.begin();
 }
 
 void loop() {
   int rawValue = analogRead(SENSOR_PIN);
+  /*int temperature = dht11.readTemperature();
+
+  // Check the result of the reading.
+  // If there's no error, print the temperature value.
+  // If there's an error, print the appropriate error message.
+  if (temperature != DHT11::ERROR_CHECKSUM && temperature != DHT11::ERROR_TIMEOUT) {
+    Serial.print("Temperature: ");
+    Serial.print(temperature);
+    Serial.println(" °C");
+  } else {
+    // Print error message based on the error code.
+    Serial.println(DHT11::getErrorString(temperature));
+  }
+  Serial.print(temperature);*/
+
+  float humidity = dht.readHumidity();
+  float temperature = dht.readTemperature();
+
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println("Failed to read sensor");
+    delay(2000);
+    return;
+  }
+
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.println(" C");
+
+  Serial.print("Humidity: ");
+  Serial.print(humidity);
+  Serial.println(" %");
 
   // Convert raw value to a 0% - 100% scale and constrain bounds
   int moisturePercent = map(rawValue, DRY_VALUE, WET_VALUE, 0, 100);
@@ -65,51 +88,7 @@ void loop() {
   analogWrite(E1, 153);  // Courir à la moitié de la vitesse
   digitalWrite(I1, HIGH);
   digitalWrite(I2, LOW);
-
-  byte dht11_dat[5];
-  byte dht11_in;
-  byte i;
-  // start condition
-  // 1. pull-down i/o pin from 18ms
-  PORTF &= ~_BV(DHT11_PIN);  // pull-down i/o pin from 18ms
-  delay(18);
-  PORTF |= _BV(DHT11_PIN);
-  delayMicroseconds(40);
-  DDRF &= ~_BV(DHT11_PIN);  //Set to input
-  delayMicroseconds(40);
-  dht11_in = PINF & _BV(DHT11_PIN);  //Read data line is high
-  voltage if (dht11_in) {
-    Serial.println("dht11 start condition 1 not met");
-    return;
-  }
-  delayMicroseconds(80);
-  dht11_in = PINF & _BV(DHT11_PIN);
-  if (!dht11_in) {
-    Serial.println("dht11 start condition 2 not met");
-    return;
-  }
-  delayMicroseconds(80);
-  // now ready for data reception
-  for (i = 0; i < 5; i++)
-    dht11_dat[i] = read_dht11_dat();
-  DDRF |= _BV(DHT11_PIN);
-  PORTF |= _BV(DHT11_PIN);
-  byte dht11_check_sum = dht11_dat[0] + dht11_dat[1] + dht11_dat[2] + dht11_dat[3];
-  // check check_sum
-  if (dht11_dat[4] != dht11_check_sum) {
-    Serial.println("DHT11 checksum error");
-  }
-  Serial.print("Current humdity = ");
-  Serial.print(dht11_dat[0], DEC);
-  Serial.print(".");
-  Serial.print(dht11_dat[1], DEC);
-  Serial.print("% ");
-  Serial.print("temperature = ");
-  Serial.print(dht11_dat[2], DEC);
-  Serial.print(".");
-  Serial.print(dht11_dat[3], DEC);
-  Serial.println("C ");
-  delay(500);
+  delay(1000);
 }
 
 /*#if 0
