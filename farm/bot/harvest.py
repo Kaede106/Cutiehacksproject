@@ -14,11 +14,13 @@ from .compose import _counts, _esc, _parse_time
 
 HARVEST_FILE = "harvest.jsonl"
 KINDS = ("picked", "removed", "watered")
+DAILY_WRITE_LIMIT = 50
+WRITE_LIMIT_NOTICE = "You've reached today's harvest log limit. You can log more tomorrow."
 _lock = Lock()
 
 # Match the entire sentence. A permissive tail would accept questions,
 # alternatives, quoted reports and qualifications such as "in my dream".
-_NUMBER = r"(?P<count>[1-9][0-9]*)"
+_NUMBER = r"(?P<count>10000|[1-9][0-9]{0,3})"
 _PATTERNS = (
     ("picked", rf"(?:i )?picked {_NUMBER}(?: oranges?)?(?: today)?"),
     ("picked", rf"(?:(?:yo )?recog[ií]|(?:yo )?he recogido) {_NUMBER}(?: naranjas?)?(?: hoy)?"),
@@ -50,12 +52,33 @@ def parse_command(text: str) -> tuple[str, int] | None:
     return None
 
 
+class WriteLimitReached(Exception):
+    """This chat has reached its harvest write quota for the day."""
+
+
+def _check_write_limit(chat_id: int, now: datetime) -> None:
+    # Count all writes, including entries that were undone and the undo markers.
+    today = now.date()
+    writes = 0
+    for record in store._read(HARVEST_FILE):
+        if record.get("chat_id") == chat_id and not record.get("demo"):
+            taken = _parse_time(record.get("taken_at"), now)
+            if taken is not None and taken.astimezone(now.tzinfo).date() == today:
+                writes += 1
+                if writes >= DAILY_WRITE_LIMIT:
+                    raise WriteLimitReached
+
+
 def append_entry(
     chat_id: int | None, kind: str, count: int, text: str, *,
-    taken_at: str | None = None, demo: bool = False,
+    taken_at: str | None = None, demo: bool = False, now: datetime | None = None,
 ) -> None:
     with _lock:
-        record = dict(taken_at=taken_at or store.now_iso(), chat_id=chat_id, kind=kind, count=count, text=text)
+        now = now or datetime.now().astimezone()
+        if chat_id is not None and not demo:
+            _check_write_limit(chat_id, now)
+        record = dict(taken_at=taken_at or now.isoformat(timespec="seconds"),
+                      chat_id=chat_id, kind=kind, count=count, text=text)
         if demo:
             record["demo"] = True
         store._append(HARVEST_FILE, record)
@@ -80,15 +103,18 @@ def entries(chat_id: int, *, include_demo: bool = False) -> list[dict[str, Any]]
     return active + examples
 
 
-def undo(chat_id: int) -> bool:
+def undo(chat_id: int, *, now: datetime | None = None) -> bool:
     with _lock:
+        now = now or datetime.now().astimezone()
+        _check_write_limit(chat_id, now)
         if not entries(chat_id):
             return False
-        store._append(HARVEST_FILE, dict(taken_at=store.now_iso(), chat_id=chat_id, undo=True))
+        store._append(HARVEST_FILE, dict(taken_at=now.isoformat(timespec="seconds"), chat_id=chat_id, undo=True))
         return True
 
 
-async def maybe_record(chat_id: int, message: Any, *, command: bool = False, text: str | None = None) -> bool:
+async def maybe_record(chat_id: int, message: Any, *, now: datetime, command: bool = False,
+                       text: str | None = None) -> bool:
     """Log a completed action stated in the message (or in `text`, e.g. a voice transcript)."""
     text = message.text or "" if text is None else text
     parse = parse_command if command else parse_text
@@ -96,8 +122,12 @@ async def maybe_record(chat_id: int, message: Any, *, command: bool = False, tex
     if action is None:
         return False
     kind, count = action
-    await asyncio.to_thread(append_entry, chat_id, kind, count, text)
-    await message.reply_text("Logged: watered today." if kind == "watered" else f"Logged: {count} {kind} today.")
+    try:
+        await asyncio.to_thread(append_entry, chat_id, kind, count, text, now=now)
+    except WriteLimitReached:
+        await message.reply_text(WRITE_LIMIT_NOTICE)
+    else:
+        await message.reply_text("Logged: watered today." if kind == "watered" else f"Logged: {count} {kind} today.")
     return True
 
 

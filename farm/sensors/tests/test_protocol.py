@@ -88,3 +88,25 @@ def test_record_has_contract_fields_and_nulls():
                       "wind_ms": None, "raw": raw}
     assert set(FIELDS) < set(record)
     assert "simulated" not in record
+
+
+import pytest as _pytest
+
+from farm.sensors.protocol import parse_line as _parse
+
+
+@_pytest.mark.parametrize("line,key,value", [
+    ("Temperature: 23.40 C", "T", 23.4),
+    ("Temperature: 21 °C", "T", 21.0),
+    ("Humidity: 55.00 %", "H", 55.0),
+    ("Raw: 612 | Moisture: 45%", "SOIL", 612.0),
+])
+def test_team_sketch_human_lines(line, key, value):
+    values = _parse(line)
+    assert values[key] == value
+    assert all(v is None for k, v in values.items() if k != key)
+
+
+@_pytest.mark.parametrize("line", ["Failed to read sensor", "Ready"])
+def test_team_sketch_status_lines_are_skipped(line):
+    assert _parse(line) is None

@@ -8,6 +8,7 @@ to test and to preview without Telegram.
 from __future__ import annotations
 
 import html
+import math
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -197,13 +198,13 @@ def _footer(scan: Mapping[str, Any], scan_time: datetime, now: datetime, *,
 
 def _mold_photos(scan: Mapping[str, Any], photo_ok: Callable[[str], bool]) -> list[Photo]:
     molds = [f for f in _fruits(scan) if f.get("label") == "mold"]
-    molds.sort(key=lambda f: _CONFIDENCE_RANK.get(f.get("confidence"), 3))
+    molds.sort(key=lambda f: _CONFIDENCE_RANK.get(str(f.get("confidence")), 3))
     photos = []
     for fruit in molds:
         crop = fruit.get("crop")
         if not isinstance(crop, str) or not crop or not photo_ok(crop):
             continue
-        conf = fruit.get("confidence")
+        conf = str(fruit.get("confidence"))
         conf_text = f" ({_esc(conf)} confidence)" if conf in _CONFIDENCE_RANK else ""
         photos.append(Photo(crop, f"Possible mold, fruit {_esc(fruit.get('id', '?'))}{conf_text}."))
         if len(photos) == MAX_PHOTOS:
@@ -248,9 +249,10 @@ def _parse_time(value: Any, now: datetime) -> datetime | None:
 def _number(value: Any) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
-    if value != value:  # NaN
+    try:
+        return float(value) if math.isfinite(value) else None
+    except OverflowError:
         return None
-    return float(value)
 
 
 def _fmt(value: float) -> str:

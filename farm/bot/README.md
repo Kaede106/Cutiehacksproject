@@ -36,14 +36,14 @@ The bot has its own venv. Do not share it with other programs.
 1. In Telegram, open a chat with **@BotFather** and send `/newbot`.
 2. Pick a display name (for example "CutieFarm") and a username ending in `bot` (for example `cutiefarm_demo_bot`).
 3. BotFather replies with a token like `123456789:AA...`. Put it in `farm/bot/.env` as `TELEGRAM_BOT_TOKEN=...`. Treat the token like a password: anyone who has it can act as the bot. If it leaks, send `/revoke` to BotFather.
-4. Start the bot (below), open your bot in Telegram and send `/start`. If `ALLOWED_CHAT_IDS` is empty, the reply tells you your chat ID. Put it in `.env` as `ALLOWED_CHAT_IDS=<id>` and restart, so nobody else can use the bot.
+4. Start the bot (below), open your bot in Telegram and send `/start`. If `ALLOWED_CHAT_IDS` is empty, the bot log shows the chat ID for your `/start` message. Put it in `.env` as `ALLOWED_CHAT_IDS=<id>` and restart to restrict access to that chat.
 
 ### `.env` settings
 
 | Variable | Default | Meaning |
 |---|---|---|
 | `TELEGRAM_BOT_TOKEN` | (required to run) | From @BotFather. Never printed or logged. |
-| `ALLOWED_CHAT_IDS` | empty: anyone | Comma-separated chat IDs. Others are ignored, with no reply. |
+| `ALLOWED_CHAT_IDS` | empty: any private chat | Comma-separated chat IDs. Others are ignored, with no reply. |
 | `DAILY_AT` | `09:00` | Daily message time, 24-hour. |
 | `TIMEZONE` | `America/Los_Angeles` | Time zone for `DAILY_AT` and the times in messages. |
 | `CUTIEFARM_DATA` | `farm/data` | Data folder shared with the camera and sensor programs. |
