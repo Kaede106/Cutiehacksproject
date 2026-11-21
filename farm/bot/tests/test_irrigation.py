@@ -154,13 +154,19 @@ def test_sensor_estimate_used_without_forecast_and_says_how():
     assert a.cadence in (EVERY_2_WEEKS, WEEKLY)
     text = " ".join(a.inputs_used)
     assert "Hargreaves estimate from sensor temperatures over 3 days" in text
-    assert "assumed latitude 34 (set FARM_LAT)" in text
+    assert "assumed latitude 34.00 (set FARM_LAT)" in text
     assert "No rain data: rain assumed to be zero" in text
 
 
 def test_sensor_estimate_uses_farm_lat_when_set():
-    a = advise(full_days(2, 12, 26), None, TODAY, IrrigationConfig(latitude=36.7))
-    assert "latitude 36.7" in " ".join(a.inputs_used) and "assumed latitude" not in " ".join(a.inputs_used)
+    a = advise(full_days(2, 12, 26), None, TODAY, IrrigationConfig(latitude=36.712345))
+    text = " ".join(a.inputs_used)
+    assert "latitude 36.71" in text and "36.712345" not in text and "assumed latitude" not in text
+
+
+def test_infinite_sensor_readings_do_not_drive_irrigation():
+    a = advise([reading(timedelta(minutes=5), soil=float("-inf"), temp=float("inf"))], None, TODAY, CFG, now=NOW)
+    assert a.cadence == UNKNOWN
 
 
 def test_single_reading_falls_back_to_an_assumed_daily_range():

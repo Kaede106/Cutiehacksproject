@@ -14,7 +14,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, Callable
 
-from .irrigation import Weather, WeatherDay
+from .irrigation import Weather, WeatherDay, _number
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 CACHE_FILE = "weather_cache.json"
@@ -29,7 +29,7 @@ def parse_open_meteo(payload: Any, source: str = "Open-Meteo forecast") -> Weath
     rains = daily.get("precipitation_sum") or [None] * len(days)
     out = []
     for d, e, r in zip(days, et0s, rains):
-        out.append(WeatherDay(date.fromisoformat(d), _num(e), _num(r)))
+        out.append(WeatherDay(date.fromisoformat(d), _number(e), _number(r)))
     if not out:
         raise ValueError("forecast has no days")
     return Weather(tuple(out), source)
@@ -96,7 +96,3 @@ def _write_cache(path: Path, data: dict) -> None:
         os.replace(tmp, path)
     except OSError:
         log.warning("Could not write %s", path.name)
-
-
-def _num(value: Any) -> float | None:
-    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None

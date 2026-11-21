@@ -39,6 +39,13 @@ def first_line(message):
     return plain(message).splitlines()[0]
 
 
+def test_nonfinite_sensor_values_are_omitted():
+    record = sensors(temperature_c=float("inf"), humidity_pct=float("nan"), wind_ms=float("-inf"))
+    text = plain(compose(None, record, NOW))
+    assert "soil moisture 41%" in text
+    assert " °C" not in text and "humidity" not in text and "wind" not in text
+
+
 # --- counts and what to do ---------------------------------------------------
 
 

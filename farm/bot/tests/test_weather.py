@@ -22,6 +22,13 @@ def test_parse():
     assert [(d.day, d.et0_mm, d.rain_mm) for d in w.days] == [(TODAY, 2.89, 0.0), (TODAY + timedelta(days=1), None, 1.5)]
 
 
+def test_parse_ignores_nonfinite_forecast_values():
+    payload = {"daily": {**PAYLOAD["daily"], "et0_fao_evapotranspiration": [float("inf"), float("nan")],
+                         "precipitation_sum": [float("-inf"), 1.5]}}
+    first, second = parse_open_meteo(payload).days
+    assert (first.et0_mm, first.rain_mm, second.et0_mm, second.rain_mm) == (None, None, None, 1.5)
+
+
 def test_no_location_no_request(tmp_path):
     calls = []
     assert get_weather(None, None, "UTC", TODAY, tmp_path, fetcher(calls)) is None

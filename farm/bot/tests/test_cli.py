@@ -1,3 +1,7 @@
+import logging
+from types import SimpleNamespace
+from urllib.parse import quote
+
 import pytest
 
 from farm.bot import __main__ as cli
@@ -60,3 +64,25 @@ def test_run_with_bad_setting(monkeypatch, capsys):
     assert cli.main(["run"]) == 2
     err = capsys.readouterr().err
     assert err.startswith("Config error: TIMEZONE") and "AAHdq" not in err
+
+
+def test_polling_failure_exits_one_and_redacts_traceback(monkeypatch, capsys):
+    token = "12345:" + "x" * 35
+    key = "test-configured-key"
+    secrets = [token, quote(token, safe=""), key, "bot99999:" + "a%2F" * 10, "sk-" + "b" * 25]
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", token)
+    monkeypatch.setenv("OPENAI_API_KEY", key)
+    root = logging.getLogger()
+    monkeypatch.setattr(root, "handlers", root.handlers[:])
+    for logger in (root, logging.getLogger("httpx"), logging.getLogger("httpcore")):
+        original_level = logger.level
+        monkeypatch.setattr(logger, "level", original_level)
+
+    def fail(**kwargs):
+        raise RuntimeError(" ".join(secrets))
+
+    monkeypatch.setattr("farm.bot.app.build_application", lambda config: SimpleNamespace(run_polling=fail))
+    assert cli.main(["run"]) == 1
+    err = capsys.readouterr().err
+    assert "Telegram bot failed" in err and "RuntimeError" in err and err.count("[redacted]") == len(secrets)
+    assert all(secret not in err for secret in secrets)
