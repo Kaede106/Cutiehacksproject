@@ -14,7 +14,7 @@ from farm.bot.app import Handlers, build_application
 from farm.bot.chat import OPENAI_URL, Conversation
 from farm.bot.config import load_config
 from farm.bot.state import State
-from farm.bot.voice import TRANSCRIPTION_URL
+from farm.bot.voice import MAX_AUDIO_BYTES, TRANSCRIPTION_URL
 
 
 @pytest.fixture
@@ -36,22 +36,23 @@ def make_handlers(tmp_path, monkeypatch):
     return make
 
 
-def fake_update(chat_id=1, *, duration=60, audio=False):
+def fake_update(chat_id=1, *, duration=60, audio=False, file_size=None):
     file = SimpleNamespace(file_path="https://example.test/files/audio.bin",
                            download_as_bytearray=AsyncMock(return_value=bytearray(b"audio-bytes")))
-    media = SimpleNamespace(duration=duration, get_file=AsyncMock(return_value=file))
+    media = SimpleNamespace(duration=duration, file_size=file_size, get_file=AsyncMock(return_value=file))
     if audio:
         media.file_name = "grower question.M4A"
         media.mime_type = "audio/mp4"
     message = SimpleNamespace(voice=None if audio else media, audio=media if audio else None,
                               reply_text=AsyncMock())
-    return SimpleNamespace(effective_chat=SimpleNamespace(id=chat_id), effective_message=message), media
+    return SimpleNamespace(effective_chat=SimpleNamespace(id=chat_id, type="private"), effective_message=message), media
 
 
 def test_application_registers_voice_and_audio(tmp_path, monkeypatch):
     monkeypatch.setenv("CUTIEFARM_DATA", str(tmp_path))
     config = load_config({"TELEGRAM_BOT_TOKEN": "12345:" + "x" * 35})
     app = build_application(config)
+    assert app.update_processor.max_concurrent_updates == 8
     for field, media in (("voice", Voice("file", "unique", 1)), ("audio", Audio("file", "unique", 1))):
         message = Message(1, datetime.now(config.timezone), Chat(1, "private"), **{field: media})
         update = Update(1, message=message)
@@ -112,12 +113,34 @@ def test_audio_transcribes_and_answers_with_model(make_handlers):
 
 
 @pytest.mark.parametrize("audio", [False, True])
-def test_audio_over_sixty_seconds_is_rejected(make_handlers, audio):
+@pytest.mark.parametrize("duration", [61, None, 0, -1, timedelta(0)])
+def test_invalid_audio_duration_is_rejected(make_handlers, audio, duration):
     handlers, requests = make_handlers()
-    update, media = fake_update(duration=61, audio=audio)
+    update, media = fake_update(duration=duration, audio=audio)
     asyncio.run(handlers.voice(update, SimpleNamespace(bot=AsyncMock())))
     assert "60 seconds or less" in update.effective_message.reply_text.await_args.args[0]
     media.get_file.assert_not_called()
+    assert requests == []
+
+
+def test_audio_over_size_limit_is_rejected_before_download(make_handlers):
+    handlers, requests = make_handlers()
+    update, media = fake_update(file_size=MAX_AUDIO_BYTES + 1)
+    asyncio.run(handlers.voice(update, SimpleNamespace(bot=AsyncMock())))
+    media.get_file.assert_not_called()
+    assert "2,000,000 bytes" in update.effective_message.reply_text.await_args.args[0]
+    assert requests == []
+    assert handlers.conversation.limits._total == 0
+
+
+def test_audio_download_over_size_limit_never_reaches_openai(make_handlers):
+    handlers, requests = make_handlers()
+    update, media = fake_update(file_size=MAX_AUDIO_BYTES)
+    download = media.get_file.return_value.download_as_bytearray
+    download.return_value = bytearray(MAX_AUDIO_BYTES + 1)
+    asyncio.run(handlers.voice(update, SimpleNamespace(bot=AsyncMock())))
+    download.assert_awaited_once()
+    assert "couldn't transcribe" in update.effective_message.reply_text.await_args.args[0]
     assert requests == []
 
 

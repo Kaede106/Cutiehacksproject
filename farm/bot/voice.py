@@ -15,6 +15,7 @@ log = logging.getLogger("farm.bot.voice")
 TRANSCRIPTION_URL = "https://api.openai.com/v1/audio/transcriptions"
 DEFAULT_MODEL = "gpt-4o-mini-transcribe"
 MAX_DURATION = 60
+MAX_AUDIO_BYTES = 2_000_000
 _AUDIO_TYPES = {
     ".flac": "audio/flac", ".m4a": "audio/mp4", ".mp3": "audio/mpeg",
     ".mp4": "audio/mp4", ".mpeg": "audio/mpeg", ".mpga": "audio/mpeg",
@@ -27,7 +28,11 @@ _MIME_EXTENSIONS.update({"audio/mpeg": ".mp3", "audio/mp4": ".m4a", "audio/x-m4a
 def too_long(media: Audio | Voice) -> bool:
     duration = media.duration
     seconds = duration.total_seconds() if isinstance(duration, timedelta) else duration
-    return seconds > MAX_DURATION
+    return seconds is None or not 0 < seconds <= MAX_DURATION
+
+
+def too_large(media: Audio | Voice) -> bool:
+    return media.file_size is not None and media.file_size > MAX_AUDIO_BYTES
 
 
 def _audio_extension(media: Audio, file_path: str | None) -> str | None:
@@ -46,12 +51,16 @@ class Transcriber:
         self._client = client
 
     async def transcribe(self, media: Audio | Voice, *, is_voice: bool) -> str | None:
+        if too_large(media):
+            return None
         try:
             file = await media.get_file()
             ext = ".ogg" if is_voice else _audio_extension(media, file.file_path)
             if ext is None:
                 return None
             content = bytes(await file.download_as_bytearray())
+            if len(content) > MAX_AUDIO_BYTES:
+                return None
             client = self._client or httpx.AsyncClient(timeout=30)
             try:
                 response = await client.post(
