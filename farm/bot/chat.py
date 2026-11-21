@@ -198,3 +198,33 @@ class Conversation:
         self.history[chat_id].append({"role": "user", "content": question[:1000]})
         self.history[chat_id].append({"role": "assistant", "content": answer})
         return answer
+
+    async def reword(self, chat_id: int, reply: str, caption: str, today: date) -> str | None:
+        """Say a fixed reply in the language this chat uses, keeping every fact. None means:
+        send the reply as it is (no model, no earlier messages to take the language from, or a failure)."""
+        if not self.enabled or not (self.history[chat_id] or caption.strip()):
+            return None
+        if not self.limits.take(chat_id, today):
+            return None
+        system = ("Rewrite the assistant reply below for the grower, in the language they have been "
+                  "writing in. Keep every fact, label and confidence exactly; add nothing. Plain text, "
+                  "at most three sentences.\n\nREPLY\n" + reply)
+        messages = [{"role": "system", "content": system}, *list(self.history[chat_id])]
+        messages.append({"role": "user", "content": caption.strip() or "(sent a photo of an orange)"})
+        body = {"model": self.model, "messages": messages, "max_completion_tokens": 300}
+        try:
+            client = self._client or httpx.AsyncClient(timeout=30)
+            try:
+                r = await client.post(OPENAI_URL, json=body, headers={"Authorization": f"Bearer {self.api_key}"})
+            finally:
+                if self._client is None:
+                    await client.aclose()
+            if r.status_code != 200:
+                return None
+            text = (r.json()["choices"][0]["message"]["content"] or "").strip()
+        except Exception as exc:
+            log.warning("OpenAI reword failed for chat %s (%s).", chat_id, type(exc).__name__)
+            return None
+        if text:
+            self.history[chat_id].append({"role": "assistant", "content": text})
+        return text or None
