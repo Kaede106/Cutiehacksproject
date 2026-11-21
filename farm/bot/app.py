@@ -23,6 +23,7 @@ from .photo import classify_photo, photo_reply
 from .config import Config
 from .irrigation import Advice, advise, water_message
 from .state import STATE_FILE, State
+from .voice import too_long
 from .weather import get_weather
 
 log = logging.getLogger("farm.bot")
@@ -169,6 +170,9 @@ class Handlers:
         if not self._allowed(update):
             return
         question = (update.effective_message.text or "").strip()
+        await self._answer(update, context, question)
+
+    async def _answer(self, update: Update, context: ContextTypes.DEFAULT_TYPE, question: str) -> None:
         chat_id = update.effective_chat.id
         now = datetime.now(self.config.timezone)
         if question and self.conversation.enabled:
@@ -191,6 +195,30 @@ class Handlers:
         else:
             await update.effective_message.reply_text(
                 "Ask me about your oranges or about watering, or use " + COMMANDS_LINE[len("I understand "):])
+
+    async def voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self._allowed(update):
+            return
+        message = update.effective_message
+        media = message.voice or message.audio
+        if too_long(media):
+            await message.reply_text("Please send an audio clip of 60 seconds or less, or type your question.")
+            return
+        if not self.conversation.enabled:
+            await message.reply_text("Voice notes and audio need OPENAI_API_KEY. Try /status, /water or /help.")
+            return
+        today = datetime.now(self.config.timezone).date()
+        if not self.conversation.limits.take(update.effective_chat.id, today):
+            await message.reply_text("I've reached today's audio limit. /status and /water still work.")
+            return
+        question = await self.conversation.transcriber.transcribe(media, is_voice=message.voice is not None)
+        if not question:
+            await message.reply_text("I couldn't transcribe that audio. Try recording it again or type your question.")
+            return
+        # Leave room for the quote even if every character takes two UTF-16 code units.
+        quote = question if len(question) <= 2000 else question[:2000] + "…"
+        await message.reply_text(f'You said: "{quote}"')
+        await self._answer(update, context, question)
 
     async def photo(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Someone sent a photo: run the colour check on its centre, on this laptop."""
@@ -335,6 +363,7 @@ def build_application(config: Config) -> Application:
     app.add_handler(MessageHandler(filters.COMMAND, handlers.unknown))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handlers.text))
     app.add_handler(MessageHandler(filters.PHOTO, handlers.photo))
+    app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handlers.voice))
     app.add_error_handler(on_error)
     app.job_queue.run_daily(handlers.daily, time=config.daily_at, name="daily-message")
     app.job_queue.run_repeating(handlers.watch_scans, interval=30, first=5, name="mold-alerts")
