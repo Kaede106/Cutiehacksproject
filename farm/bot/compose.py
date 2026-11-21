@@ -16,6 +16,7 @@ from typing import Any, Mapping
 
 from farm.common.store import LABELS
 
+from .forecast import Forecast, forecast_line
 from .irrigation import Advice, advice_line
 
 SCAN_MAX_AGE = timedelta(hours=24)
@@ -41,6 +42,7 @@ def compose(
     *,
     scan_command: str | None = None,
     irrigation: Advice | None = None,
+    forecast: Forecast | None = None,
 ) -> Message:
     """Build the daily message.
 
@@ -71,7 +73,7 @@ def compose(
         )
         return Message(_join([headline, water_line, details, sensor_line,
                               _footer(scan, scan_time, now, with_time=False)]))
-    return Message(_join([_headline(counts), water_line, sensor_line, _footer(scan, scan_time, now)]))
+    return Message(_join([_headline(counts), forecast_line(forecast), water_line, sensor_line, _footer(scan, scan_time, now)]))
 
 
 def to_plain(text: str) -> str:
