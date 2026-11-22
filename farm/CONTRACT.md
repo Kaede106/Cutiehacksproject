@@ -15,7 +15,7 @@ Arduino ─► sensor bridge ──► sensors.jsonl ┘
 | `farm/bot/` | Telegram bot | its own `bot_state.json`, `irrigation.jsonl` | `scans.jsonl`, `sensors.jsonl`, `irrigation_results.jsonl` |
 | `farm/irrigation_control.py` | shared: the watering queue files and every safety rule | — | — |
 | `farm/common/` | shared, change only by agreement | — | — |
-| `ml/image-classification/` | **the teammate's CNN. Do not edit.** | | |
+| `src/` | **the ML teammates' code and YOLO weights. Do not edit.** | | |
 | `web/` | landing page and in-browser scanner | | |
 
 ## Labels

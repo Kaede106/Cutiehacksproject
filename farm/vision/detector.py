@@ -9,7 +9,14 @@ import numpy as np
 
 from .scan import Box, Detector, find_boxes
 
-DEFAULT_WEIGHTS = Path(__file__).resolve().parents[2] / "ml" / "image-classification" / "yolo26n.pt"
+_ROOT = Path(__file__).resolve().parents[2]
+# The ML teammates have moved the weights before, so look in each place they have lived.
+WEIGHT_CANDIDATES = (
+    _ROOT / "src" / "python" / "ml" / "image_classification" / "yolo26n.pt",
+    _ROOT / "src" / "yolo26n.pt",
+    _ROOT / "ml" / "image-classification" / "yolo26n.pt",
+)
+DEFAULT_WEIGHTS = next((path for path in WEIGHT_CANDIDATES if path.exists()), WEIGHT_CANDIDATES[0])
 
 
 class YoloOrangeDetector:
