@@ -4,6 +4,7 @@ Cómo leer este guion:
 - **[→]** es un clic (flecha derecha o el mando). Cada clic coincide con un *beat* del deck. Habla y **después** pasa: la diapositiva acompaña a la frase, no la anuncia.
 - *Las notas en cursiva* son indicaciones para el presentador. No se dicen en voz alta.
 - Lo que se dice está en inglés y entre comillas, a unas 120 palabras por minuto, con pausas. Los tiempos son acumulados.
+- Hay 10 escenas y 44 clics; el mercado va **después** de la demo. Cuatro bloques seguidos de minuto y medio, uno por persona.
 - Ahora hay 10 escenas y 44 clics. Las teclas 1–9 saltan a las escenas 1–9; el cierre se alcanza con → o con End.
 - Antes de empezar, abre la ventana del presentador con la tecla **P**. Muestra la nota de cada beat, el siguiente beat y un reloj.
 
@@ -18,7 +19,9 @@ Cómo leer este guion:
 
 ---
 
-## 1 · Open (0:00 → 0:20)
+### 🎤 Persona 1 (hardware, la idea de Minecraft): 0:00 → 1:30
+
+## 1 · Open (0:00 → 0:25)
 
 *Pantalla de espera mientras la gente se sienta.*
 
@@ -30,7 +33,7 @@ Cómo leer este guion:
 
 ---
 
-## 2 · The problem (0:20 → 1:15)
+## 2 · The problem (0:25 → 1:30)
 
 **[→] Minecraft**
 > "Some of us are big Minecraft players. If you've built an automatic sugar cane farm, you know the feeling: you build it once… and from then on, it grows and harvests itself."
@@ -58,7 +61,11 @@ Cómo leer este guion:
 
 ---
 
-## 3 · Three answers (1:15 → 2:35)
+### 🎤 Persona 2 (ML): 1:30 → 3:00
+
+*Entrada:* "…and here's [nombre] with how the grove answers them."
+
+## 3 · Three answers (1:30 → 3:00)
 
 **[→] Ripe?**
 > "First question: is it ripe? A laptop webcam points at the tree."
@@ -93,7 +100,11 @@ Cómo leer este guion:
 
 ---
 
-## 4 · The bot (2:35 → 3:20)
+### 🎤 Persona 3 (Pablo, software): 3:00 → 4:30
+
+*Entrada:* "…and all of that lands in one place. [Nombre]?"
+
+## 4 · The bot (3:00 → 3:40)
 
 **[→] One chat**
 > "All three answers land in one place the grower already uses: a Telegram bot."
@@ -112,21 +123,7 @@ Cómo leer este guion:
 
 ---
 
-## 4b · Market (3:20 → 3:45)
-
-**[→] TAM**
-> "Who is this for? Citrus in the US was a **3.15 billion dollar** crop last season, on about 428 thousand acres. That's the value of the crop we watch over, not our revenue."
-
-**[→] SAM**
-> "California alone grows **2.73 billion** of it. That's the market we can serve with a webcam, an Arduino and a Telegram bot."
-
-**[→] SOM**
-> "And we start with California oranges: a **722 million dollar** crop, and navel oranges began right here in Riverside."
-> *La fuente sale en pantalla (USDA, temporada 2025-26). Si el jurado pregunta por ingresos, di que estas cifras son el valor de la cosecha y que el modelo de precios por acre está por definir.*
-
----
-
-## 5 · Demo (3:45 → 4:55, unos 70 s en total)
+## 5 · Demo (3:40 → 4:30, unos 50 s)
 
 **[→] Camera + dashboard**
 > "Let me show you."
@@ -150,7 +147,25 @@ Cómo leer este guion:
 
 ---
 
-## 6 · How we built it (4:55 → 5:25)
+### 🎤 Persona 4 (hardware): 4:30 → 6:00
+
+*Entrada:* "So who is this for? [Nombre]."
+
+## 6 · Market (4:30 → 4:55)
+
+**[→] TAM**
+> "Who is this for? Citrus in the US was a **3.15 billion dollar** crop last season, on about 428 thousand acres. That's the value of the crop we watch over, not our revenue."
+
+**[→] SAM**
+> "California alone grows **2.73 billion** of it. That's the market we can serve with a webcam, an Arduino and a Telegram bot."
+
+**[→] SOM**
+> "And we start with California oranges: a **722 million dollar** crop, and navel oranges began right here in Riverside."
+> *La fuente sale en pantalla (USDA, temporada 2025-26). Si el jurado pregunta por ingresos, di que estas cifras son el valor de la cosecha y que el modelo de precios por acre está por definir.*
+
+---
+
+## 7 · How we built it (4:55 → 5:25)
 
 **[→] Shared folder**
 > "How we built it. In the middle there's one shared data folder, full of append-only files."
@@ -172,7 +187,7 @@ Cómo leer este guion:
 
 ---
 
-## 7 · What we learned (5:25 → 5:45)
+## 8 · What we learned (5:25 → 5:45)
 
 **[→] STM32**
 > "What fought back: we started on an STM32 board. It fought us, so we switched to an Arduino to keep moving."
@@ -188,7 +203,7 @@ Cómo leer este guion:
 
 ---
 
-## 8 · What's next (5:45 → 5:52)
+## 9 · What's next (5:45 → 5:53)
 
 **[→] Wire it in**
 > "Next: wire the camera and sensors in for good,"
@@ -201,7 +216,7 @@ Cómo leer este guion:
 
 ---
 
-## 9 · Close (5:52 → 6:00)
+## 10 · Close (5:53 → 6:00)
 
 **[→] A grove that watches itself**
 > "Like those Minecraft farms: build it once, and **the grove watches itself.**"
@@ -230,17 +245,12 @@ Cómo leer este guion:
 
 ## Tiempos de referencia
 
-| Escena | Termina en |
-|---|---|
-| 1 Open | 0:20 |
-| 2 Problem | 1:15 |
-| 3 Three answers | 2:35 |
-| 4 Bot | 3:20 |
-| 4b Market | 3:45 |
-| 5 Demo | 4:55 |
-| 6 Built | 5:25 |
-| 7 Learned | 5:45 |
-| 8 Next | 5:52 |
-| 9 Close | 6:00 |
+| Bloque | Quién | Escenas | Termina en |
+|---|---|---|---|
+| 1 | Persona 1 (hardware, idea) | Open, Problem | 1:30 |
+| 2 | Persona 2 (ML) | Three answers: ripe, healthy, water | 3:00 |
+| 3 | Persona 3 (Pablo) | Bot, Demo | 4:30 |
+| 4 | Persona 4 (hardware) | Market, How we built it, Learned, Next, Close | 6:00 |
 
-Si vas tarde al acabar la demo (más de 5:00), pasa la escena 7 con una frase por beat, sin pararte.
+- Una sola persona pasa las diapositivas (Pablo, que también lleva el portátil en la demo).
+- Si la demo se alarga, Persona 4 resume "What we learned" en una frase por clic.

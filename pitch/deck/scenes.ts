@@ -50,18 +50,18 @@ export const SCENES: SceneDef[] = [
     ],
   },
   {
+    id: 'DEMO', title: 'DEMO',
+    beats: [
+      { name: 'camera + dashboard', ref: 'What it does · 1, 4', note: 'SWITCH TO THE LAPTOP. Show the live camera window with boxes and ripeness labels, then the control room dashboard: ready counts, the watering plan and sensor trends. Come back and press →.' },
+      { name: 'telegram', ref: 'What it does · 3', note: 'SWITCH TO TELEGRAM. Show the 9:00 summary, ask a question (try a voice note), send an orange photo, and run /week. Then come back and press →.' },
+    ],
+  },
+  {
     id: 'MARKET', title: 'MARKET',
     beats: [
       { name: 'TAM', ref: 'Market (USDA NASS 2025-26)', note: 'Who is this for? Citrus in the US was a 3.15 billion dollar crop last season, on about 428 thousand bearing acres. That is the value of the crop we watch over, not our revenue.' },
       { name: 'SAM', ref: 'Market (USDA NASS 2025-26)', note: 'California alone grows 2.73 billion dollars of it, on 267 thousand acres. That is the market we can serve with a webcam, an Arduino and a Telegram bot.' },
       { name: 'SOM', ref: 'Market (USDA NASS 2025-26)', note: 'We start with California oranges: a 722 million dollar crop on 133,500 acres, and navel oranges began right here in Riverside. Source on screen: USDA, 2025-26 season.' },
-    ],
-  },
-  {
-    id: 'DEMO', title: 'DEMO',
-    beats: [
-      { name: 'camera + dashboard', ref: 'What it does · 1, 4', note: 'SWITCH TO THE LAPTOP. Show the live camera window with boxes and ripeness labels, then the control room dashboard: ready counts, the watering plan and sensor trends. Come back and press →.' },
-      { name: 'telegram', ref: 'What it does · 3', note: 'SWITCH TO TELEGRAM. Show the 9:00 summary, ask a question (try a voice note), send an orange photo, and run /week. Then come back and press →.' },
     ],
   },
   {

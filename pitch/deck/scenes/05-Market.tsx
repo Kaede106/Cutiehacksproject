@@ -62,4 +62,4 @@ function Market_() {
 }
 
 /** 05 MARKET — TAM / SAM / SOM as the value of the citrus crop (USDA NASS 2025-26), nested circles. */
-export const Market = () => <Scene index={4}><Market_ /></Scene>;
+export const Market = () => <Scene index={5}><Market_ /></Scene>;
