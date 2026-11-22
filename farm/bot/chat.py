@@ -28,6 +28,7 @@ from typing import Any, Mapping
 import httpx
 
 from .compose import _counts, _fruits, _number
+from .forecast import Forecast, forecast_context_line
 from .voice import Transcriber
 
 log = logging.getLogger("farm.bot.chat")
@@ -110,7 +111,8 @@ def _positions(fruits: list[Mapping[str, Any]]) -> dict[int, str]:
 
 
 def farm_context(scan: Mapping[str, Any] | None, sensors: Mapping[str, Any] | None,
-                 watering: str | None, now: datetime) -> str:
+                 watering: str | None, now: datetime, *,
+                 forecast: Forecast | str | None = None) -> str:
     """A compact, factual summary of what the bot knows right now."""
     lines = [f"Now: {now:%A %d %B %Y, %H:%M} (grower's local time)."]
     if not scan:
@@ -144,6 +146,8 @@ def farm_context(scan: Mapping[str, Any] | None, sensors: Mapping[str, Any] | No
         lines.append("Sensors: none connected yet.")
     if watering:
         lines.append("Watering advice: " + watering)
+    if line := forecast_context_line(forecast):
+        lines.append(line)
     return "\n".join(lines)
 
 

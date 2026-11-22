@@ -11,6 +11,7 @@ from typing import Any, Iterable, Iterator
 from farm.common import store
 
 from .compose import _counts, _esc, _parse_time
+from .forecast import week_forecast_line
 
 HARVEST_FILE = "harvest.jsonl"
 KINDS = ("picked", "watered")
@@ -174,7 +175,9 @@ def week_summary(chat_id: int, now: datetime) -> str:
         days = ", ".join(f"{day:%a} {day:%b} {day.day}" for day in sorted(watered_days))
         harvest_line = f"Picked {totals['picked']}\nWatered: {days or 'no days logged'}"
 
+    forecast_block = week_forecast_line((r for _, r in scans), now, (r for _, r in actions))
+
     return (
-        f"<b>Last 7 days</b>\n\n<b>Scans</b>{scan_note}\n{_esc(scan_line)}"
+        f"<b>Last 7 days</b>\n\n<b>Scans</b>{scan_note}\n{_esc(scan_line)}{forecast_block}"
         f"\n\n<b>Harvest log</b>{harvest_note}\n{_esc(harvest_line)}"
     )

@@ -20,6 +20,7 @@ from .access import is_allowed, photo_path
 from .buttons import StatusButtons, status_keyboard
 from .chat import LIMIT_NOTICE, LIMITS_FILE, Conversation, LimitReached, farm_context, keyword_intent, strip_html
 from .compose import Message, Photo, _counts, compose
+from .forecast import Forecast, forecast_harvest
 from .photo import classify_photo, photo_reply
 from .config import Config
 from .irrigation import Advice, advise, water_message
@@ -76,6 +77,7 @@ def build_message(config: Config, now: datetime | None = None) -> Message:
         now,
         scan_command=config.scan_command,
         irrigation=_advice_or_none(config, now),
+        forecast=_forecast_or_none(now),
     )
 
 
@@ -84,6 +86,16 @@ def _advice_or_none(config: Config, now: datetime) -> Advice | None:
         return water_advice(config, now)
     except Exception:
         log.exception("Could not work out the watering advice")
+        return None
+
+
+def _forecast_or_none(now: datetime) -> Forecast | None:
+    try:
+        scans = deque(store._read(store.SCANS_FILE), maxlen=MAX_HISTORY)
+        picks = deque(store._read(harvest.HARVEST_FILE), maxlen=MAX_HISTORY)
+        return forecast_harvest(scans, now, picks)
+    except Exception:
+        log.exception("Could not work out the harvest forecast")
         return None
 
 
@@ -358,7 +370,7 @@ class Handlers:
         except Exception:
             log.exception("Could not work out the watering advice for a chat answer")
             watering = None
-        return farm_context(scan, sensors, watering, now)
+        return farm_context(scan, sensors, watering, now, forecast=_forecast_or_none(now))
 
     async def water(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not self._allowed(update):
