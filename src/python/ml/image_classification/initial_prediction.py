@@ -81,7 +81,7 @@ class OrangeCNN(nn.Module):
 orange_model = OrangeCNN()
 
 orange_model.load_state_dict(
-    torch.load("C:\\Users\\ralma\\Documents\\Cutiehacksproject\\ml\\notebooks\\orange_cnn.pth", map_location="cpu", weights_only=True)
+    torch.load("orange_cnn.pth", map_location="cpu", weights_only=True)
 )
 
 orange_model.eval()
