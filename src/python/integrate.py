@@ -12,8 +12,13 @@ try:
         if arduino.in_waiting > 0:
             # Read the line, convert bytes to string, and remove \r\n
             line = arduino.readline().decode('utf-8').rstrip()
+            try:
+                adc_value = int(line)
+            except ValueError:
+                print(f"Invalid serial data: {line}")
+                continue
             print(f"Received from Arduino: {line}")
-            print(f"predict {predict(int(line), 20, 67)}")
+            print(f"predict {predict(adc_value, 20, 67)}")
 
 except KeyboardInterrupt:
     print("Closing connection...")
