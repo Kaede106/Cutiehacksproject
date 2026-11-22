@@ -10,7 +10,7 @@ CutieFarm tells the grower which oranges are ready to pick and when the grove ne
 2. Copy `farm\bot\.env` to that laptop privately (USB or a direct message). Never commit it.
 3. Stop the bot on every other laptop: one bot per token.
 4. Start it: `powershell -ExecutionPolicy Bypass -File farm\demo.ps1`. Add `-Camera` to scan real oranges with the webcam, and `-Arduino` if the board is plugged in. It uses its own data folder, `farm\data-pitch`, seeds clearly marked demo data, starts the bot, the sensors and the control room, and opens the dashboard and the landing page.
-5. For a live camera window with boxes, open a second terminal: `farm\bot\.venv\Scripts\python -m farm.vision live`
+5. With `-Camera`, a camera window opens with YOLO's boxes and ripeness labels live. Point it at the oranges and press **S** to save a scan: the dashboard shows it within seconds, and if it sees ripe oranges the bot sends its ready-to-pick alert. `-Camera` uses its own empty data folder (`farm\data-pitch-camera`), so everything on screen comes from the webcam, not demo data.
 
 One command starts everything that runs on the laptop:
 

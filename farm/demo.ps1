@@ -32,22 +32,28 @@ if (-not (Test-Path 'farm\bot\.env')) {
 }
 
 # A separate data folder for the pitch, so the demo never mixes with real data.
-$data = Join-Path (Get-Location) 'farm\data-pitch'
+# With -Camera the folder starts empty: every scan in it comes from the webcam, never from demo data,
+# and the first scan that sees ripe oranges triggers the bot's ready-to-pick alert.
+$data = Join-Path (Get-Location) $(if ($Camera) { 'farm\data-pitch-camera' } else { 'farm\data-pitch' })
 $env:CUTIEFARM_DATA = $data
-if ($FreshData -and (Test-Path $data)) {
+if (($FreshData -or $Camera) -and (Test-Path $data)) {
     Remove-Item -Recurse -Force (Join-Path $data '*') -Exclude 'bot_state.json'
 }
-if (-not (Test-Path (Join-Path $data 'scans.jsonl'))) {
+if (-not $Camera -and -not (Test-Path (Join-Path $data 'scans.jsonl'))) {
     Write-Host 'Writing a week of demo data (clearly marked as demo)...'
     & $py -m farm.bot seed-demo --week
 }
 
 $hubArgs = @('-m', 'farm', '--dashboard')
 if (-not $Arduino) { $hubArgs += '--simulate-sensors' } else { & $py -m farm.sensors ports }
-if ($Camera) { $hubArgs += '--vision' }
 
+if ($Camera) {
+    # The live window owns the webcam: it shows YOLO's boxes and labels in real time, and S saves a scan
+    # (which the dashboard and the bot pick up within seconds). No background watcher, so the camera isn't shared.
+    Start-Process -FilePath $py -ArgumentList '-m', 'farm.vision', 'live' -WorkingDirectory (Get-Location)
+}
 Start-Job -ScriptBlock { Start-Sleep 6; Start-Process 'http://127.0.0.1:8800'; Start-Process 'https://cutiehacksproject.vercel.app' } | Out-Null
 Write-Host ''
 Write-Host 'Dashboard: http://127.0.0.1:8800   Bot: https://t.me/CutieFarmGroveBot   Ctrl+C stops everything.'
-if ($Camera) { Write-Host 'For the live camera window with boxes, open a second terminal: farm\bot\.venv\Scripts\python -m farm.vision live' }
+if ($Camera) { Write-Host 'Camera window: point it at the oranges, press S to save a scan, Q to close it.' }
 & $py @hubArgs

@@ -123,6 +123,8 @@ class Handlers:
         self.conversation = conversation or Conversation(limits_path=store.data_dir() / LIMITS_FILE)
         self._last_scan_id: str | None = None
         self._last_ripe: int | None = None
+        self._checked_scans = False
+        self._started_empty = False
 
     def _allowed(self, update: Update) -> bool:
         chat = update.effective_chat
@@ -321,15 +323,26 @@ class Handlers:
     def _pending_scans(self) -> list[dict]:
         """Read scans appended after the baseline, in file order."""
         pending = []
+        everything = []
         latest = None
         baseline_found = False
         for scan in store._read(store.SCANS_FILE):
             latest = scan
+            everything.append(scan)
             if scan_key(scan) == self._last_scan_id:
                 baseline_found = True
                 pending.clear()
             elif baseline_found:
                 pending.append(scan)
+        first_check = not self._checked_scans
+        self._checked_scans = True
+        if latest is None and first_check:
+            self._started_empty = True  # no scans at startup: the first ones to arrive are all new
+        if not baseline_found and latest is not None and self._started_empty:
+            # The file was empty when the bot started (e.g. a live camera demo): compare with zero ripe.
+            self._started_empty = False
+            self._last_scan_id, self._last_ripe = None, 0
+            return everything
         if not baseline_found:
             # On startup or after the file is replaced, use its latest scan as the baseline.
             self._last_scan_id = scan_key(latest) if latest else None

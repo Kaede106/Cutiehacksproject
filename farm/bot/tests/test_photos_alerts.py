@@ -205,3 +205,15 @@ def test_watch_scans_catches_alert_processing_failure(data, monkeypatch, caplog)
     run(h.watch_scans(ctx))
     assert "Could not check scans for ripe alerts" in caplog.text
     ctx.bot.send_message.assert_not_called()
+
+
+def test_first_scans_alert_when_the_bot_started_with_none(data):
+    # Live camera demo: the data folder is empty when the bot starts.
+    h, ctx = subscribed(data), context()
+    run(h.watch_scans(ctx))                   # first check: nothing yet
+    store.append_scan(scan("camera-1", 2))
+    run(h.watch_scans(ctx))                   # first camera scan: 2 ripe, compared with zero
+    store.append_scan(scan("camera-2", 2))
+    run(h.watch_scans(ctx))                   # same count: quiet
+    ctx.bot.send_message.assert_awaited_once()
+    assert "2 more oranges are ready to pick (2 in total)" in ctx.bot.send_message.await_args.args[1]
