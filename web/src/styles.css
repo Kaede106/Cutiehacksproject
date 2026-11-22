@@ -952,3 +952,27 @@ code {
 }
 
 /* ---------- End watering simulator ---------- */
+
+/* ---------- Control room link (demo snapshot) ---------- */
+
+.build-control {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  max-width: 44rem;
+  padding-top: 32px;
+  border-top: 1px solid var(--line-soft);
+}
+.build-control p { color: var(--cf-ink-muted); }
+
+.text-link {
+  padding-block: 10px;
+  font-weight: 700;
+  text-decoration-thickness: 2px;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 32px;
+}
