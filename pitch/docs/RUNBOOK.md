@@ -6,6 +6,10 @@ cd pitch && npm install && npm run present
 
 That builds the deck and opens `http://127.0.0.1:4173/`. Once `npm install` has run, it all works offline.
 
+**Single HTML file:** `npm run build:html` writes `dist-single/cutiefarm-pitch.html`, one file (fonts and photo
+inlined) that opens with a double click, with no server and no internet. Use `npm run present` if you want the presenter window (P),
+because a page opened from disk may not connect to it.
+
 ## Keys
 
 | Key | Action |
@@ -15,7 +19,7 @@ That builds the deck and opens `http://127.0.0.1:4173/`. Once `npm install` has 
 | **O** | overview: click any beat to jump there |
 | **F** | fullscreen |
 | ← ↑ PageUp | previous beat |
-| 1–9 | jump to a scene |
+| 1–9 | jump to scenes 1–9 (scene 10, the close, is reachable with → or End) |
 | B or . | blackout on/off |
 
 ## Before the talk
@@ -25,7 +29,7 @@ That builds the deck and opens `http://127.0.0.1:4173/`. Once `npm install` has 
 3. Open the demo windows before you start, so you can switch to them during the talk: the camera window, the
    control room dashboard and Telegram with @CutieFarmGroveBot.
 
-## Shape of the talk (about 6 minutes, 41 beats, no automatic beats)
+## Shape of the talk (about 6 minutes, 44 beats, no automatic beats)
 
 | Scene | Beats | What |
 | --- | --- | --- |
@@ -33,14 +37,15 @@ That builds the deck and opens `http://127.0.0.1:4173/`. Once `npm install` has 
 | 2 THE PROBLEM | 7 | Minecraft farms, then a grower's week: ripeness, disease, watering, three questions |
 | 3 THREE ANSWERS | 10 | ripe? (YOLO + peel colour) · healthy? (our CNN + canker message) · water? (sensors, forecast, maths, pump limits) |
 | 4 THE BOT | 5 | one chat, 9:00 summary, alert, Spanish question, /week (all labelled as examples) |
-| 5 DEMO | 2 | **5.1** switch to the camera window and the dashboard · **5.2** switch to Telegram |
-| 6 HOW WE BUILT IT | 6 | the shared folder diagram builds node by node, `python -m farm`, four people, the stack |
-| 7 WHAT WE LEARNED | 4 | STM32 → Arduino, colour is fragile, a safe public bot, honest demo labels |
-| 8 WHAT'S NEXT | 3 | wire it in, STM32 port, automatic watering after pump tests |
-| 9 CLOSE | 2 | "A grove that watches itself.", then the QR, links and thanks |
+| 5 MARKET | 3 | TAM US citrus $3.15B · SAM California citrus $2.73B · SOM California oranges $722M (USDA 2025-26 crop value) |
+| 6 DEMO | 2 | **6.1** switch to the camera window and the dashboard · **6.2** switch to Telegram |
+| 7 HOW WE BUILT IT | 6 | the shared folder diagram builds node by node, `python -m farm`, four people, the stack |
+| 8 WHAT WE LEARNED | 4 | STM32 → Arduino, colour is fragile, a safe public bot, honest demo labels |
+| 9 WHAT'S NEXT | 3 | wire it in, STM32 port, automatic watering after pump tests |
+| 10 CLOSE | 2 | "A grove that watches itself.", then the QR, links and thanks |
 
-**Demo (scene 5):** on 5.1, Alt+Tab to the camera window, then to the dashboard. Come back to the stage and press →.
-On 5.2, switch to Telegram. Come back and press → to continue. If the demo fails, stay on the slides: scene 4
+**Demo (scene 6):** on 6.1, Alt+Tab to the camera window, then to the dashboard. Come back to the stage and press →.
+On 6.2, switch to Telegram. Come back and press → to continue. If the demo fails, stay on the slides: scene 4
 already shows the bot.
 
 ## If something goes wrong

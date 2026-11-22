@@ -84,4 +84,4 @@ function Built_() {
 }
 
 /** 06 HOW WE BUILT IT — shared append-only folder built node by node, one command, four people, the stack. */
-export const Built = () => <Scene index={5}><Built_ /></Scene>;
+export const Built = () => <Scene index={6}><Built_ /></Scene>;

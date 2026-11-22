@@ -37,4 +37,4 @@ function Demo_() {
 }
 
 /** 05 DEMO — two cues: camera window + dashboard, then Telegram. */
-export const Demo = () => <Scene index={4}><Demo_ /></Scene>;
+export const Demo = () => <Scene index={5}><Demo_ /></Scene>;

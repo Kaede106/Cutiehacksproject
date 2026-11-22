@@ -7,11 +7,12 @@ import { Open } from './scenes/01-Open';
 import { Problem } from './scenes/02-Problem';
 import { Answers } from './scenes/03-Answers';
 import { Bot } from './scenes/04-Bot';
-import { Demo } from './scenes/05-Demo';
-import { Built } from './scenes/06-Built';
-import { Learned } from './scenes/07-Learned';
-import { Next } from './scenes/08-Next';
-import { Close } from './scenes/09-Close';
+import { Market } from './scenes/05-Market';
+import { Demo } from './scenes/06-Demo';
+import { Built } from './scenes/07-Built';
+import { Learned } from './scenes/08-Learned';
+import { Next } from './scenes/09-Next';
+import { Close } from './scenes/10-Close';
 
 /** Every layer of the stage, back to front. All stay mounted; each shows itself for its own scene. */
 function Stage() {
@@ -21,6 +22,7 @@ function Stage() {
       <Problem />
       <Answers />
       <Bot />
+      <Market />
       <Demo />
       <Built />
       <Learned />
