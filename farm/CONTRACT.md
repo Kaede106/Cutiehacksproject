@@ -11,10 +11,11 @@ Arduino ─► sensor bridge ──► sensors.jsonl ┘
 | Folder | Owner | Writes | Reads |
 |---|---|---|---|
 | vision program (teammate, optional, via VISION_COMMAND) | teammate | `scans.jsonl`, `scans/*.jpg` | — |
-| `farm/sensors/` | sensor bridge (+ reference Arduino sketch) | `sensors.jsonl` | — |
-| `farm/bot/` | Telegram bot | its own `bot_state.json` | both files |
+| `farm/sensors/` | sensor bridge (+ reference Arduino sketch) | `sensors.jsonl`, `irrigation_results.jsonl` | `irrigation.jsonl` |
+| `farm/bot/` | Telegram bot | its own `bot_state.json`, `irrigation.jsonl` | `scans.jsonl`, `sensors.jsonl`, `irrigation_results.jsonl` |
+| `farm/irrigation_control.py` | shared: the watering queue files and every safety rule | — | — |
 | `farm/common/` | shared, change only by agreement | — | — |
-| `ml/image-classification/` | **the teammate's CNN. Do not edit.** | | |
+| `src/` | **the ML teammates' code and YOLO weights. Do not edit.** | | |
 | `web/` | landing page and in-browser scanner | | |
 
 ## Labels
@@ -56,6 +57,43 @@ Arduino ─► sensor bridge ──► sensors.jsonl ┘
 ```
 
 Any sensor that isn't connected is `null`. Never invent a value. A reading produced by a simulator (for demos without the board) carries `"simulated": true`, and anything that shows it to a person must say so.
+
+## Watering: `irrigation.jsonl` and `irrigation_results.jsonl`
+
+The bot asks for watering by appending a command to `irrigation.jsonl`. The sensor bridge, the only program that holds the Arduino's serial port, picks each new command up within about a second. It sends `WATER=<seconds>` to the board and appends what happened to `irrigation_results.jsonl`. Both files are read and written only through `farm/irrigation_control.py`, which also holds the safety rules (see `farm/bot/README.md`, "Watering the grove").
+
+```json
+{"id": "20261121T141502-9c1e", "taken_at": "2026-11-21T14:15:02-08:00", "action": "water", "seconds": 8,
+ "reason": "Soil moisture is 28%, below 35%.", "requested_by": "auto"}
+```
+
+- `action` is always `water`. `seconds` is a whole number from 1 to `MAX_WATER_SECONDS` (default 15, never above 30).
+- `requested_by` is `auto` (automatic mode) or `chat:<telegram chat id>` (`/water_now`).
+- The bot queues a command only after the safety checks pass. The bridge checks `seconds` again, and the board has its own cap.
+
+```json
+{"command_id": "20261121T141502-9c1e", "taken_at": "2026-11-21T14:15:03-08:00", "status": "sent", "seconds": 8,
+ "detail": "sent WATER=8 to the board"}
+{"command_id": "20261121T141502-9c1e", "taken_at": "2026-11-21T14:15:11-08:00", "status": "done", "seconds": 8,
+ "detail": "the board confirmed", "board_reply": "#WATER_DONE 8"}
+```
+
+A command can have several results. The last one is its status:
+
+| `status` | Meaning |
+|---|---|
+| (no result yet) | pending: the bridge hasn't picked it up |
+| `sent` | `WATER=<n>` was written to the board; waiting for `#WATER_DONE` |
+| `done` | the board printed `#WATER_DONE <n>`, or the simulator ran it (`"simulated": true`: no water ran) |
+| `no_ack` | sent, but no `#WATER_DONE` came within `seconds` + 10 s. The pump may or may not have run. |
+| `failed` | not run: no board connected, a write error, an invalid command, or the board refused it (`#WATER_ERR ...`) |
+| `expired` | the command was over 2 minutes old when the bridge saw it (it was not running), so it was not run |
+
+- `python -m farm.sensors simulate` (no board) completes every command at once with `"status": "done", "simulated": true`, and the simulated soil gets wetter. Anything that shows such a result to a person must say no water ran.
+- The bridge never sends a command twice. On start, it skips commands that already have a result.
+- Waterings with status pending, `sent`, `done` or `no_ack` count toward the cooldown and the daily cap. `failed` and `expired` ones don't.
+
+Board side: one line `WATER=<seconds>` from the laptop, ending in a newline. The board answers `#WATER_START <n>`, then `#WATER_DONE <n>` when the pump stops, or `#WATER_ERR <why>` if it refuses. `WATER=0` stops the pump. See `farm/sensors/arduino/WATER_SNIPPET.md`.
 
 ## Times
 

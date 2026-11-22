@@ -7,6 +7,10 @@
 // DHT sensor is enabled below and the read succeeds. Lines starting with # are
 // comments. Protocol: farm/sensors/README.md.
 //
+// Watering: the laptop sends WATER=<seconds>. The sketch runs the pump motor
+// (E1 PWM, I1 HIGH, I2 LOW) for that long without blocking the loop, then prints
+// #WATER_DONE <seconds>. It refuses runs longer than WATER_MAX_S. WATER=0 stops it.
+//
 // Flash: Arduino IDE > Tools > Board "Arduino Uno" > pick the port > Upload.
 // Then CLOSE the Serial Monitor: only one program can hold the port.
 
@@ -31,11 +35,89 @@ const int DHT_PIN = 2;
 // Wind: not implemented yet, sends nothing. See readWind() below.
 #define USE_WIND 0
 
+// Watering pump on a motor driver, wired like the team's sketch (sketch_nov21a).
+#define USE_WATER 1
+#define E1 6                    // driver enable, PWM: pump speed
+#define I1 4                    // driver input 1
+#define I2 5                    // driver input 2
+const int WATER_MAX_S = 30;     // hard safety cap: longer requests are refused
+const int PUMP_SPEED = 153;     // analogWrite on E1, 0..255 (153 = 60%)
+
 // ---------------------------------------------------------------- code
 
 #if USE_DHT
 #include <DHT.h>
 DHT dht(DHT_PIN, DHT_TYPE);
+#endif
+
+#if USE_WATER
+bool watering = false;
+unsigned long waterStart = 0;
+unsigned long waterMs = 0;
+int waterSeconds = 0;
+char waterBuf[16];
+byte waterLen = 0;
+bool waterOverflow = false;
+
+void pumpOn() {
+  digitalWrite(I1, HIGH);
+  digitalWrite(I2, LOW);
+  analogWrite(E1, PUMP_SPEED);
+}
+
+void pumpOff() {
+  analogWrite(E1, 0);
+  digitalWrite(I1, LOW);
+  digitalWrite(I2, LOW);
+}
+
+void waterCommand(const char *cmd) {
+  if (strncmp(cmd, "WATER=", 6) != 0) return;  // not for us
+  const char *p = cmd + 6;
+  if (*p == '\0') { Serial.println(F("#WATER_ERR no seconds")); return; }
+  long n = 0;
+  for (; *p; p++) {
+    if (*p < '0' || *p > '9' || n > 999) { Serial.println(F("#WATER_ERR bad number")); return; }
+    n = n * 10 + (*p - '0');
+  }
+  if (n == 0) {                                  // WATER=0: stop now
+    if (watering) { pumpOff(); watering = false; Serial.println(F("#WATER_STOPPED")); }
+    return;
+  }
+  if (n > WATER_MAX_S) { Serial.print(F("#WATER_ERR over cap ")); Serial.println(WATER_MAX_S); return; }
+  if (watering) { Serial.println(F("#WATER_ERR busy")); return; }
+  waterSeconds = (int)n;
+  waterMs = (unsigned long)n * 1000UL;
+  waterStart = millis();
+  watering = true;
+  pumpOn();
+  Serial.print(F("#WATER_START "));
+  Serial.println(waterSeconds);
+}
+
+// Reads any waiting serial bytes and stops the pump on time. Never blocks.
+void waterTick() {
+  while (Serial.available() > 0) {
+    char c = (char)Serial.read();
+    if (c == '\r') continue;
+    if (c == '\n') {
+      waterBuf[waterLen] = '\0';
+      if (!waterOverflow) waterCommand(waterBuf);
+      waterLen = 0;
+      waterOverflow = false;
+    } else if (waterLen < sizeof(waterBuf) - 1) {
+      waterBuf[waterLen++] = c;
+    } else {
+      waterOverflow = true;                      // too long to be a command: ignore the line
+    }
+  }
+  if (watering && millis() - waterStart >= waterMs) {
+    pumpOff();
+    watering = false;
+    Serial.print(F("#WATER_DONE "));
+    Serial.println(waterSeconds);
+  }
+}
 #endif
 
 void setup() {
@@ -47,12 +129,19 @@ void setup() {
 #if USE_DHT
   dht.begin();
 #endif
+#if USE_WATER
+  pinMode(E1, OUTPUT);
+  pinMode(I1, OUTPUT);
+  pinMode(I2, OUTPUT);
+  pumpOff();
+#endif
   Serial.println(F("# cutiefarm_sensors v1"));
   Serial.print(F("# soil=A0 interval_ms="));
   Serial.print(INTERVAL_MS);
   Serial.print(F(" dht="));
   Serial.print(USE_DHT ? F("on") : F("off"));
-  Serial.println(F(" wind=off"));
+  Serial.print(F(" wind=off water="));
+  Serial.println(USE_WATER ? F("on") : F("off"));
 }
 
 int readSoil() {
@@ -82,7 +171,21 @@ float readWind() {
 }
 #endif
 
+unsigned long lastSend = 0;
+bool sentOnce = false;
+
 void loop() {
+#if USE_WATER
+  waterTick();
+#endif
+  // Send a reading every INTERVAL_MS, without delay(), so watering stays on time.
+  if (sentOnce && millis() - lastSend < INTERVAL_MS) return;
+  lastSend = millis();
+  sentOnce = true;
+  sendReading();
+}
+
+void sendReading() {
   Serial.print(F("SOIL="));
   Serial.print(readSoil());
 
@@ -108,5 +211,4 @@ void loop() {
 #endif
 
   Serial.println();
-  delay(INTERVAL_MS);
 }

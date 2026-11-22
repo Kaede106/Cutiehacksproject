@@ -1,42 +1,8 @@
-import './styles.css';
 import { mountScanner } from './scanner/index.js';
 import qrcode from 'qrcode-generator';
 
 const root = document.getElementById('scanner-root');
 if (root) mountScanner(root);
-
-const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-
-// Hero: one pass of the camera over the grove. Each orange's frame appears as the line reaches it,
-// then the example morning message arrives.
-// Without JS or with reduced motion the frames are simply there.
-function scanGrove() {
-  const grove = document.querySelector('[data-grove]');
-  if (!grove || reduceMotion.matches) return;
-
-  const sweep = 2000;
-  const delay = 350;
-  const box = grove.getBoundingClientRect();
-  if (!box.width) return;
-
-  const marks = [...grove.querySelectorAll('.mark')];
-  const markDelays = marks.map((mark) => {
-    const r = mark.getBoundingClientRect();
-    const centre = (r.left + r.width / 2 - box.left) / box.width;
-    const at = Math.min(1, Math.max(0, centre));
-    return `${Math.round(delay + sweep * at)}ms`;
-  });
-  marks.forEach((mark, i) => { mark.style.animationDelay = markDelays[i]; });
-
-  const hero = grove.closest('.hero') || grove;
-  hero.style.setProperty('--sweep', `${sweep}ms`);
-  hero.style.setProperty('--sweep-delay', `${delay}ms`);
-  grove.classList.add('is-scanning');
-  hero.classList.add('is-scanning');
-
-  // Remove the overlay elements' animation state once done so nothing sits on top of the art.
-  window.setTimeout(() => grove.classList.add('is-scanned'), delay + sweep + 400);
-}
 
 // "Scan an orange" moves focus to the demo heading so keyboard users land in the right place.
 function wireJumps() {
@@ -64,6 +30,5 @@ function wireTelegram() {
   box.hidden = false;
 }
 
-scanGrove();
 wireJumps();
 wireTelegram();

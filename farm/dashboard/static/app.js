@@ -1,5 +1,7 @@
 "use strict";
-// CutieFarm control room: polls /api/state and updates the page in place. Values from the data
+// CutieFarm control room. Live mode (the server) polls /api/state and updates the page in place.
+// Static mode (a snapshot made by `python -m farm.dashboard export`) reads ./state.json once. The
+// export marks its page with <meta name="cutiefarm-mode" content="static">. Values from the data
 // files are only ever put on the page as text (textContent), never as HTML.
 
 const POLL_MS = 2500;
@@ -9,6 +11,22 @@ const TONE = { ripe: "var(--cf-ripe)", ripening: "var(--cf-ripening)", unripe: "
 const KIND_TEXT = { scan: "Scan", ready: "Ready", picked: "Picked", watered: "Watered", sensors: "Sensors" };
 const FLAG_TEXT = { demo: "Demo", simulated: "Simulated" };
 const $ = (id) => document.getElementById(id);
+const STATIC = document.querySelector('meta[name="cutiefarm-mode"]')?.getAttribute("content") === "static";
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// A snapshot does not move on, so times are shown as dates and clocks, never "5 min ago".
+function dayOfIso(iso) { // "2026-11-21T09:00:12-08:00" -> "Nov 21", in the zone the scan was recorded in
+  const m = /^\d{4}-(\d{2})-(\d{2})/.exec(iso || "");
+  return m ? `${MONTHS[Number(m[1]) - 1]} ${Number(m[2])}` : "";
+}
+
+function dayOfEpoch(seconds, zone) {
+  try {
+    return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: zone }).format(seconds * 1000);
+  } catch (error) {
+    return "";
+  }
+}
 
 function h(tag, props, ...kids) {
   const el = document.createElement(tag);
@@ -122,7 +140,9 @@ function renderCameraMeta(state) {
   }
   const item = (cls, name, value) => h("div", { class: cls }, h("dt", null, name), h("dd", null, value));
   meta.replaceChildren(
-    item(scan.age_s > 3600 ? "when old" : "when", "Scanned", `${scan.clock}, ${ago(scan.age_s)}`),
+    STATIC
+      ? item("when", "Scanned", `${dayOfIso(scan.taken_at)}, ${scan.clock}`)
+      : item(scan.age_s > 3600 ? "when old" : "when", "Scanned", `${scan.clock}, ${ago(scan.age_s)}`),
     item("", "Model", scan.model || "not recorded"),
     item("", "Source", scan.source || "not recorded"),
   );
@@ -213,7 +233,9 @@ function renderWater(state) {
       h("p", { class: "label" }, m.label),
       h("p", { class: "value" }, known ? m.value : "—", known && h("small", null, m.unit)),
       m.stale
-        ? h("p", { class: "stale" }, `Last reading ${ago(m.age_s)}`)
+        ? h("p", { class: "stale" }, STATIC
+            ? `Last reading ${ago(m.age_s).replace(/ ago$/, "")} before the snapshot`
+            : `Last reading ${ago(m.age_s)}`)
         : m.low != null && h("p", { class: "range" }, `Last 24 h: ${m.low}–${m.high} ${m.unit}`));
     return h("div", { class: "metric" }, info, sparkline(m, sensors.window));
   });
@@ -246,7 +268,7 @@ function renderFeed(state) {
     const fresh = !firstFeed && !seen.has(key);
     seen.add(key);
     return h("li", { class: fresh ? "fresh" : "" },
-      h("span", { class: "t" }, e.clock),
+      h("span", { class: "t" }, STATIC ? `${dayOfEpoch(e.t, state.snapshot?.timezone)}, ${e.clock}` : e.clock),
       h("span", { class: `k k-${e.kind}` }, KIND_TEXT[e.kind] || e.kind),
       h("span", null, e.text),
       e.flag ? h("span", { class: "tag" }, FLAG_TEXT[e.flag] || e.flag) : h("span"));
@@ -258,10 +280,12 @@ function renderFeed(state) {
 // --- header, loop ------------------------------------------------------------------------------
 
 function renderHeader(state) {
-  $("notices").replaceChildren(...state.notices.map((n) => h("span", { class: "notice" }, n.text)));
+  const notices = state.notices.map((n) => n.text);
+  if (STATIC && state.scan?.source === "file") notices.push("Sample photo, not a live camera");
+  $("notices").replaceChildren(...notices.map((text) => h("span", { class: "notice" }, text)));
   const updated = $("updated");
   updated.className = "updated";
-  updated.textContent = `Updated ${state.clock}`;
+  updated.textContent = STATIC ? `Snapshot of ${state.snapshot?.date || "the demo data"}` : `Updated ${state.clock}`;
 }
 
 function render(state) {
@@ -290,5 +314,18 @@ async function tick() {
   }
 }
 
+async function loadSnapshot() {
+  try {
+    const response = await fetch("state.json", { cache: "no-cache" });
+    if (!response.ok) throw new Error(String(response.status));
+    render(await response.json());
+  } catch (error) {
+    const updated = $("updated");
+    updated.className = "updated lost";
+    updated.textContent = "The snapshot could not be loaded";
+  }
+}
+
 window.addEventListener("resize", fitFeed);
-tick();
+if (STATIC) loadSnapshot();
+else tick();

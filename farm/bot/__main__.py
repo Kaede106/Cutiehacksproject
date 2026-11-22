@@ -81,7 +81,9 @@ def run() -> int:
         log.info("Answering %d allowed chat(s) only.", len(config.allowed_chat_ids))
 
     from farm.common import store
+    from .autowater import load_settings
 
+    load_settings()  # a wrong watering setting stops here with one line, not a traceback
     try:
         app = build_application(config)
         log.info("Data folder: %s", store.data_dir())

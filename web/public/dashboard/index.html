@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="cutiefarm-mode" content="static">
+  <meta http-equiv="Content-Security-Policy" content="default-src &#x27;none&#x27;; script-src &#x27;self&#x27;; style-src &#x27;self&#x27; https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src &#x27;self&#x27; data:; connect-src &#x27;self&#x27;; base-uri &#x27;self&#x27;; form-action &#x27;none&#x27;">
+  <base href="/dashboard/">
+  <title>CutieFarm control room (demo snapshot)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Recursive:wght,CASL@300..800,0..1&display=swap">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body class="static">
+  <p class="demo-banner" id="demo-banner" role="note">Demo snapshot of the CutieFarm control room, made from demo data on November 21, 2026. The live version runs on the farm laptop. <a href="/">Back to the CutieFarm page</a></p>
+  <header class="bar">
+    <h1>CutieFarm <span>control room</span></h1>
+    <div class="notices" id="notices"></div>
+    <p class="updated" id="updated">Connecting</p>
+  </header>
+
+  <main>
+    <div class="col">
+      <section class="panel camera" aria-labelledby="camera-title">
+        <h2 class="sr-only" id="camera-title">Latest camera frame</h2>
+        <div class="frame" id="frame"></div>
+        <dl class="meta" id="camera-meta"></dl>
+      </section>
+
+      <section class="activity" aria-labelledby="activity-title">
+        <h2 id="activity-title">Activity</h2>
+        <ol class="feed" id="feed"></ol>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel ready" aria-labelledby="ready-title">
+        <h2 id="ready-title">Ready to pick</h2>
+        <div id="ready"></div>
+      </section>
+
+      <section class="panel water" aria-labelledby="water-title">
+        <h2 id="water-title">Watering</h2>
+        <div id="water"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

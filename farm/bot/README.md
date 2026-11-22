@@ -45,6 +45,7 @@ The bot has its own venv. Do not share it with other programs.
 | `CUTIEFARM_DATA` | `farm/data` | Data folder shared with the camera and sensor programs. |
 | `SCAN_COMMAND` | empty | Command for a manual scan, shown when no recent scan exists. |
 | `FARM_LAT`, `FARM_LON`, `WATER_BELOW_PCT`, `CITRUS_KC`, `HOLD_OFF_BELOW_MM`, `WEEKLY_FROM_MM`, `TWICE_WEEKLY_FROM_MM` | see below | Watering advice. |
+| `AUTO_WATER`, `WATER_SECONDS`, `MAX_WATER_SECONDS`, `WATER_COOLDOWN_MIN`, `MAX_WATERINGS_PER_DAY`, `WET_ENOUGH_PCT`, `AUTO_WATER_EVERY_MIN` | automatic watering off | Running the pump. See "Watering the grove". |
 
 Real environment variables override `.env`. A wrong value stops the bot at startup with a one-line explanation.
 
@@ -63,6 +64,7 @@ Commands in Telegram:
 | `/start` | Subscribe this chat to the daily message and ready-to-pick alerts (saved in `bot_state.json` in the data folder). |
 | `/status` | Send the message now. |
 | `/water` | Watering advice, with the inputs it used. |
+| `/water_now` | Run the pump now (8 s by default, or `/water_now 10`), after the safety checks and a confirm button. Needs `ALLOWED_CHAT_IDS`. |
 | `/picked 3` | Log 3 oranges picked today. |
 | `/watered` | Log that you watered today. |
 | `/undo` | Undo this chat's last harvest log entry. |
@@ -141,6 +143,29 @@ Fixtures: `ripe-heavy`, `pick-and-water` (the landing-page example), `empty` (no
 
 Every assumption is listed in the `/water` reply under "Based on". If there is no soil reading, no temperature and no forecast, the bot says there is not enough data and how to get it, instead of guessing.
 
+## Watering the grove
+
+The bot can also water, not just advise. It never touches the serial port: it appends a command to `irrigation.jsonl`, and the sensor bridge sends `WATER=<seconds>` to the board (format in [`farm/CONTRACT.md`](../CONTRACT.md)). The board needs the code in [`farm/sensors/arduino/WATER_SNIPPET.md`](../sensors/arduino/WATER_SNIPPET.md).
+
+**Safety rules** (all in `farm/irrigation_control.py`, the same for automatic and manual watering):
+
+| Setting | Default | Rule |
+|---|---|---|
+| `AUTO_WATER` | `0` | Automatic watering is **off** unless this is `1`. |
+| `WATER_SECONDS` | `8` | How long one watering runs. |
+| `MAX_WATER_SECONDS` | `15` | No run is longer, whatever is asked (at most 30; the bridge and the board check again). |
+| `WATER_COOLDOWN_MIN` | `60` | Minutes between waterings, counted from the last one that ran or may have run. |
+| `MAX_WATERINGS_PER_DAY` | `4` | Waterings per calendar day, in `TIMEZONE`. |
+| `WET_ENOUGH_PCT` | `60` | No watering when the latest soil reading is above this. |
+| `AUTO_WATER_EVERY_MIN` | `10` | How often automatic mode checks the advice. |
+
+- **Soil comes first.** If the latest soil reading is above `WET_ENOUGH_PCT`, or there is no reading from the last hour, automatic mode does nothing. `/water_now` explains why and offers **Water anyway**. The cooldown and the daily cap can't be overridden.
+- **Automatic mode** (`AUTO_WATER=1`): every `AUTO_WATER_EVERY_MIN` minutes, if the advice is "Water today" (soil below `WATER_BELOW_PCT`) and the rules allow it, the bot queues a watering and tells subscribers, for example "Watering now for 8 s: soil at 28%."
+- **`/water_now`**: the bot checks the rules, then asks "Water the grove for 8 s now? Soil is at 28%." with **Water 8 s** and **Cancel** buttons. Nothing is queued until you tap. The rules are checked again when you tap, and a button older than 5 minutes does nothing.
+- **Only chats in `ALLOWED_CHAT_IDS` can water.** With no allowlist, anyone who finds the bot could chat with it, so `/water_now` refuses and explains why.
+- **What you are told afterwards.** "Done: watered for 8 s. The board confirmed it." only appears after the board prints `#WATER_DONE`. That watering is logged as `watered` in the harvest log, so `/week` shows the day. If the board doesn't confirm (for example, the snippet isn't flashed), if no board is connected, or if the bridge isn't running, the bot says so and doesn't log it. With `--simulate-sensors`, the bot says that no water really ran, and the log entry is marked as demo data.
+- The bot reports results that arrive while it is running. A watering that finishes while the bot is restarting isn't announced.
+
 ## For the CV/Arduino side
 
 The bot only needs records in the data folder, written with `farm/common/store.py`. The exact fields are in [`farm/CONTRACT.md`](../CONTRACT.md). In short:
@@ -182,7 +207,7 @@ They cover the composer, watering advice and forecast cache, schedule and config
 
 ## Files
 
-`compose.py` (message, pure), `irrigation.py` (watering advice, pure), `weather.py` (Open-Meteo and its cache), `app.py` (Telegram handlers and the daily job), `harvest.py` (action parser, harvest log and weekly summary), `config.py`, `access.py`, `state.py`, `fixtures.py`, `__main__.py` (CLI).
+`compose.py` (message, pure), `irrigation.py` (watering advice, pure), `autowater.py` (`/water_now`, automatic watering and its results; the rules are in `farm/irrigation_control.py`), `weather.py` (Open-Meteo and its cache), `app.py` (Telegram handlers and the daily job), `harvest.py` (action parser, harvest log and weekly summary), `config.py`, `access.py`, `state.py`, `fixtures.py`, `__main__.py` (CLI).
 
 ## Conversation (free text)
 

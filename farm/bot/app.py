@@ -17,9 +17,11 @@ from farm.common import store
 
 from . import harvest
 from .access import is_allowed, photo_path
+from .autowater import AutoWater
 from .buttons import StatusButtons, status_keyboard
 from .chat import LIMIT_NOTICE, LIMITS_FILE, Conversation, LimitReached, farm_context, keyword_intent, strip_html
 from .compose import Message, Photo, _counts, compose
+from .forecast import Forecast, forecast_harvest
 from .photo import classify_photo, photo_reply
 from .config import Config
 from .irrigation import Advice, advise, water_message
@@ -32,6 +34,7 @@ log = logging.getLogger("farm.bot")
 COMMANDS = [
     ("status", "See what is ready to pick and when to water"),
     ("water", "Watering advice and what it is based on"),
+    ("water_now", "Water the grove now, after a safety check"),
     ("picked", "Log oranges picked, for example /picked 3"),
     ("watered", "Log that you watered today"),
     ("undo", "Undo this chat's last harvest log entry"),
@@ -76,6 +79,7 @@ def build_message(config: Config, now: datetime | None = None) -> Message:
         now,
         scan_command=config.scan_command,
         irrigation=_advice_or_none(config, now),
+        forecast=_forecast_or_none(now),
     )
 
 
@@ -84,6 +88,16 @@ def _advice_or_none(config: Config, now: datetime) -> Advice | None:
         return water_advice(config, now)
     except Exception:
         log.exception("Could not work out the watering advice")
+        return None
+
+
+def _forecast_or_none(now: datetime) -> Forecast | None:
+    try:
+        scans = deque(store._read(store.SCANS_FILE), maxlen=MAX_HISTORY)
+        picks = deque(store._read(harvest.HARVEST_FILE), maxlen=MAX_HISTORY)
+        return forecast_harvest(scans, now, picks)
+    except Exception:
+        log.exception("Could not work out the harvest forecast")
         return None
 
 
@@ -109,6 +123,8 @@ class Handlers:
         self.conversation = conversation or Conversation(limits_path=store.data_dir() / LIMITS_FILE)
         self._last_scan_id: str | None = None
         self._last_ripe: int | None = None
+        self._checked_scans = False
+        self._started_empty = False
 
     def _allowed(self, update: Update) -> bool:
         chat = update.effective_chat
@@ -162,6 +178,7 @@ class Handlers:
             "",
             "/status: what is ready to pick and when to water",
             "/water: watering advice and what it is based on",
+            "/water_now: run the pump now, after a safety check and your OK",
             "/picked 3, /watered: log what you did",
             "/undo: undo this chat's last harvest log entry",
             "/week: see the last 7 days of scans and harvest activity",
@@ -306,15 +323,26 @@ class Handlers:
     def _pending_scans(self) -> list[dict]:
         """Read scans appended after the baseline, in file order."""
         pending = []
+        everything = []
         latest = None
         baseline_found = False
         for scan in store._read(store.SCANS_FILE):
             latest = scan
+            everything.append(scan)
             if scan_key(scan) == self._last_scan_id:
                 baseline_found = True
                 pending.clear()
             elif baseline_found:
                 pending.append(scan)
+        first_check = not self._checked_scans
+        self._checked_scans = True
+        if latest is None and first_check:
+            self._started_empty = True  # no scans at startup: the first ones to arrive are all new
+        if not baseline_found and latest is not None and self._started_empty:
+            # The file was empty when the bot started (e.g. a live camera demo): compare with zero ripe.
+            self._started_empty = False
+            self._last_scan_id, self._last_ripe = None, 0
+            return everything
         if not baseline_found:
             # On startup or after the file is replaced, use its latest scan as the baseline.
             self._last_scan_id = scan_key(latest) if latest else None
@@ -358,7 +386,7 @@ class Handlers:
         except Exception:
             log.exception("Could not work out the watering advice for a chat answer")
             watering = None
-        return farm_context(scan, sensors, watering, now)
+        return farm_context(scan, sensors, watering, now, forecast=_forecast_or_none(now))
 
     async def water(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not self._allowed(update):
@@ -435,6 +463,7 @@ def build_application(config: Config) -> Application:
 
     app = Application.builder().token(config.token).post_init(post_init).concurrent_updates(8).build()
     unedited = ~filters.UpdateType.EDITED & ~filters.UpdateType.EDITED_BUSINESS_MESSAGE
+    AutoWater(handlers, water_advice).register(app, unedited)  # /water_now, its buttons, auto mode
     app.add_handler(CallbackQueryHandler(StatusButtons(handlers).handle))
     app.add_handler(CommandHandler("start", handlers.start, filters=unedited))
     app.add_handler(CommandHandler("stop", handlers.stop, filters=unedited))
