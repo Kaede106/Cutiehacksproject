@@ -4,10 +4,6 @@ from ultralytics import YOLO
 model = YOLO("yolo26n.pt")
 
 # Run object detection
-results = model.predict(
-    source="orange.jpg",
-    save=True
-)
 
 def init_pred(source):
     results = model.predict(
@@ -25,7 +21,7 @@ def init_pred(source):
 
             print("Top-left:", (x1, y1))
             print("Bottom-right:", (x2, y2))
-            output_thing.append((x1+x2)/2, (y1+y2)/2)  # Append the center coordinates of the bounding box
+            output_thing.append(((x1+x2)/2, (y1+y2)/2))  # Append the center coordinates of the bounding box
 
     return output_thing
 
