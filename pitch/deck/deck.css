@@ -1,0 +1,24 @@
+/* CutieFarm: beatdeck's neutral dark theme with one accent, CutieFarm orange. */
+:root {
+  --accent: #f2871c;
+  --accent-strong: #d9720c;
+}
+
+/* The licensed grove photo (Engin Akyurt, Pexels), used as a band or a dimmed backdrop. */
+.cf-photo { position: absolute; left: 0; width: 1920px; overflow: hidden; }
+.cf-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cf-photo::after { content: ''; position: absolute; inset: 0; }
+.cf-photo.band::after { background: linear-gradient(180deg, var(--bg) 0%, rgba(11, 11, 12, 0.4) 40%, rgba(11, 11, 12, 0.25) 100%); }
+.cf-photo.backdrop::after { background: linear-gradient(90deg, rgba(11, 11, 12, 0.94) 0%, rgba(11, 11, 12, 0.74) 55%, rgba(11, 11, 12, 0.5) 100%); }
+
+/* Chat bubbles: the bot on the left with an accent edge, the grower on the right. */
+.cf-bubble { position: relative; padding: 40px 52px 32px; border: 1px solid var(--hair-strong); }
+.cf-bubble.bot { background: var(--surface); border-left: 6px solid var(--accent); border-radius: 0 28px 28px 28px; }
+.cf-bubble.user { background: rgba(242, 135, 28, 0.14); border-right: 6px solid var(--accent); border-radius: 28px 0 28px 28px; text-align: right; }
+.cf-bubble-text { font-size: 54px; font-weight: 500; letter-spacing: -0.025em; line-height: 1.2; white-space: nowrap; }
+.cf-bubble-time { font-family: var(--font-mono); font-size: 22px; color: var(--ink-3); text-align: right; margin-top: 16px; }
+
+.cf-sub { font-size: 44px; font-weight: 500; letter-spacing: -0.02em; color: var(--ink-2); white-space: nowrap; line-height: 1.2; }
+.cf-mono { font-family: var(--font-mono); white-space: nowrap; }
+.cf-note { font-family: var(--font-mono); font-size: 22px; letter-spacing: 0.02em; color: var(--ink-3); white-space: nowrap; }
+.cf-dot { display: inline-block; width: 72px; height: 72px; border-radius: 50%; }
