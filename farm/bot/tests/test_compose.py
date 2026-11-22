@@ -211,3 +211,16 @@ def test_times_shown_in_the_timezone_of_now():
 
 def test_to_plain():
     assert to_plain("<b>a &amp; b</b> <code>&lt;x&gt;</code>") == "a & b <x>"
+
+
+def test_health_line_reports_flagged_fruit():
+    from farm.bot.compose import health_line
+    scan = {"fruits": [
+        {"label": "ripe", "health": {"label": "healthy", "confidence": "high"}},
+        {"label": "ripe", "health": {"label": "citrus_canker", "confidence": "high"}},
+        {"label": "ripening", "health": {"label": "melanose", "confidence": "low"}},
+    ]}
+    assert health_line(scan) == "<b>1 orange may have citrus canker:</b> take a look before it spreads."
+    assert health_line({"fruits": [{"label": "ripe", "health": {"label": "healthy", "confidence": "high"}}]}) \
+        == "Health check: all oranges look healthy."
+    assert health_line({"fruits": [{"label": "ripe"}]}) is None
