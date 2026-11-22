@@ -1,8 +1,8 @@
 import time
 import serial
-from python.ml.irritation_system.init_pred import predict
+from python.ml.irrigation_system.init_pred import predict
 # Replace 'COM3' with your actual port (e.g., '/dev/ttyACM0' on Mac/Linux)
-arduino = serial.Serial(port='/dev/ttyUSB0', baudrate=9600, timeout=1)
+arduino = serial.Serial(port='COM7', baudrate=9600, timeout=1)
 time.sleep(2)  # Wait for Arduino to finish resetting
 
 try:
