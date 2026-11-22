@@ -12,6 +12,7 @@
 <p align="center">
   <a href="https://cutiehacksproject.vercel.app"><strong>Live site</strong></a> ·
   <a href="https://t.me/CutieFarmGroveBot">Telegram bot</a> ·
+  <a href="https://cutiehacksproject.vercel.app/dashboard/">Control room (demo)</a> ·
   <a href="farm/README.md">Run it</a> ·
   Built at Cutiehacks 2026
 </p>
@@ -35,6 +36,7 @@ Every morning at 9:00 the Telegram bot sends the answer: *"3 ready to pick, 5 ri
 
 - **Scan an orange in your browser.** The [live site](https://cutiehacksproject.vercel.app) has the same colour check running on your device. Frames never leave it.
 - **Try the watering rule** on the site. Move the sliders for soil, heat, wind and rain and watch the schedule change.
+- **See the control room.** A [demo snapshot](https://cutiehacksproject.vercel.app/dashboard/) of the dashboard the farm laptop shows on the big screen: camera boxes, what's ready, watering, sensor trends and activity.
 - **Talk to the bot.** Open [@CutieFarmGroveBot](https://t.me/CutieFarmGroveBot) and tap Start. It runs on a team laptop, so it answers while that laptop is on.
 
 ## The bot
