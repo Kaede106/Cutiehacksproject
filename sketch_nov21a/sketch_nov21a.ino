@@ -125,7 +125,7 @@ void loop() {
       digitalWrite(RIGHTLED, HIGH);
     }
   }
-  delay(1000);
+  delay(50);
 }
 
 /*#if 0

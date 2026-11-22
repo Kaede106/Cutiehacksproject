@@ -13,5 +13,5 @@ def cam():
         return 1
     s = results[0][0]
     return 0 if s < 260 else 2 if s > 340 else 1
-while True:
-    print(cam())
+#while True:
+    #print(cam())
