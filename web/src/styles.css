@@ -204,80 +204,113 @@ code {
 }
 
 .grove {
-  position: relative;
-  height: clamp(300px, 26vw, 400px);
-  overflow: hidden;
-}
-@media (max-width: 719px) {
-  .grove { height: clamp(260px, 72vw, 320px); }
+  --photo-ratio: 2.5;
+  --photo-focus-x: 50%;
+  --photo-focus-y: 25%;
+  margin: 0;
 }
 
-.grove-art {
+.grove-frame {
+  position: relative;
+  height: clamp(300px, 30vw, 480px);
+  max-width: 1600px;
+  margin-inline: auto;
+  overflow: hidden;
+  container-type: size;
+  background: var(--canopy-deep);
+}
+
+@media (max-width: 719px) {
+  .grove { --photo-focus-x: 25%; }
+  .grove-frame { height: clamp(250px, 68vw, 320px); }
+}
+
+/* Size the image and its overlay as one layer so the crop affects them equally. */
+.grove-photo {
+  position: absolute;
+  left: var(--photo-focus-x);
+  top: var(--photo-focus-y);
+  width: max(100%, calc(100cqh * var(--photo-ratio)));
+  aspect-ratio: var(--photo-ratio);
+  transform: translate(calc(-1 * var(--photo-focus-x)), calc(-1 * var(--photo-focus-y)));
+}
+
+.grove-photo img {
   display: block;
   width: 100%;
   height: 100%;
-  -webkit-mask-image: linear-gradient(to bottom, #000 94%, transparent);
-  mask-image: linear-gradient(to bottom, #000 94%, transparent);
+  object-fit: cover;
+  object-position: var(--photo-focus-x) var(--photo-focus-y);
 }
 
-.tag-text {
-  font-family: var(--cf-font-body);
-  font-variation-settings: var(--linear);
-  font-weight: 600;
-  fill: var(--cf-ink);
-}
-
-.grove-veil,
-.grove-scanline {
+.grove-detections {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  visibility: hidden;
 }
 
-.grove-veil {
-  -webkit-backdrop-filter: grayscale(1) brightness(0.82);
-  backdrop-filter: grayscale(1) brightness(0.82);
+.grove-mark {
+  --corner-length: clamp(6px, 1vw, 15px);
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--w);
+  height: var(--h);
 }
 
-.grove-scanline::before {
+.grove-mark--ripening { --state: var(--cf-ripening); }
+.grove-mark--ripe { --state: var(--cf-ripe); }
+
+.grove-mark::before {
+  --stroke: linear-gradient(var(--canopy-ink), var(--canopy-ink));
   content: "";
   position: absolute;
-  top: 0;
-  bottom: 0;
+  inset: 0;
+  background:
+    var(--stroke) left top / var(--corner-length) 2px,
+    var(--stroke) right top / var(--corner-length) 2px,
+    var(--stroke) left bottom / var(--corner-length) 2px,
+    var(--stroke) right bottom / var(--corner-length) 2px,
+    var(--stroke) left top / 2px var(--corner-length),
+    var(--stroke) right top / 2px var(--corner-length),
+    var(--stroke) left bottom / 2px var(--corner-length),
+    var(--stroke) right bottom / 2px var(--corner-length);
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 0 2px var(--cf-ink));
+}
+
+.grove-tag {
+  position: absolute;
+  bottom: calc(100% + 4px);
   left: 0;
-  width: 2px;
-  background: #e9f6d6;
+  padding: 2px 7px;
+  border-inline-start: 4px solid var(--state);
+  border-radius: var(--cf-radius-s);
+  background: var(--canopy-ink);
+  color: var(--cf-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
-/* The one authored moment: a single pass of the camera. Content is in its final state by default;
-   main.js adds .is-scanning only when motion is allowed. */
-.grove.is-scanning .grove-veil {
-  visibility: visible;
-  animation: veil-sweep var(--sweep, 2200ms) linear var(--sweep-delay, 350ms) both;
-}
-.grove.is-scanning .grove-scanline {
-  visibility: visible;
-  animation: line-sweep var(--sweep, 2200ms) linear var(--sweep-delay, 350ms) both;
-}
-.grove.is-scanning .mark {
-  animation: mark-in 320ms var(--ease-out) both;
-  transform-box: fill-box;
-  transform-origin: center;
+@media (max-width: 719px) {
+  .grove-tag--end { left: auto; right: 0; }
 }
 
-@keyframes veil-sweep {
-  from { clip-path: inset(0 0 0 0); }
-  to { clip-path: inset(0 0 0 100%); }
+.grove-caption {
+  padding-top: 8px;
+  color: var(--canopy-muted);
+  font-size: 0.875rem;
 }
-@keyframes line-sweep {
-  0% { transform: translateX(0); opacity: 1; }
-  92% { opacity: 1; }
-  100% { transform: translateX(100%); opacity: 0; }
+
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .grove-detections { animation: grove-reveal 450ms ease-out 200ms both; }
 }
-@keyframes mark-in {
-  from { opacity: 0; transform: scale(0.94); }
-  to { opacity: 1; transform: none; }
+
+@keyframes grove-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .hero-copy {
@@ -376,21 +409,6 @@ code {
   }
   .hero h1 { max-width: none; }
   .daily { justify-self: end; width: 100%; }
-}
-
-/* The message's entrance only plays where it shares the first screen with the grove. */
-@media (min-width: 1000px) {
-  .hero.is-scanning .daily-msg {
-    animation: msg-in 420ms var(--ease-out) calc(var(--sweep-delay) + var(--sweep) - 200ms) both;
-  }
-  .cf-motion .hero:not(.is-scanning) .daily-msg { opacity: 0; }
-}
-/* Starting state, set before first paint by the inline script in index.html. */
-.cf-motion .grove:not(.is-scanned) .grove-veil { visibility: visible; }
-.cf-motion .grove:not(.is-scanning) .mark { opacity: 0; }
-@keyframes msg-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to { opacity: 1; transform: none; }
 }
 
 /* ---------- States table ---------- */
@@ -636,9 +654,6 @@ code {
   .button { transition: background-color 160ms ease; }
   .button:active { transform: none; }
 }
-
-.grove.is-scanned .grove-veil,
-.grove.is-scanned .grove-scanline { display: none; }
 
 /* ---------- Watering ---------- */
 
