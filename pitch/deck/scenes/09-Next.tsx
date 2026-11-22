@@ -18,4 +18,4 @@ function Next_() {
 }
 
 /** 08 WHAT'S NEXT — three next steps, one per beat. */
-export const Next = () => <Scene index={7}><Next_ /></Scene>;
+export const Next = () => <Scene index={8}><Next_ /></Scene>;

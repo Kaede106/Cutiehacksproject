@@ -50,4 +50,4 @@ function Close_() {
 }
 
 /** 09 CLOSE — the motto, then the QR to the website, the bot, the repo and thanks. */
-export const Close = () => <Scene index={8}><Close_ /></Scene>;
+export const Close = () => <Scene index={9}><Close_ /></Scene>;

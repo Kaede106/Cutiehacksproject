@@ -19,4 +19,4 @@ function Learned_() {
 }
 
 /** 07 WHAT WE LEARNED — four challenges, one per beat. */
-export const Learned = () => <Scene index={6}><Learned_ /></Scene>;
+export const Learned = () => <Scene index={7}><Learned_ /></Scene>;

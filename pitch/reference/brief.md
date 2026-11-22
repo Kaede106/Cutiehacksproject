@@ -40,6 +40,15 @@ public bot safe: rate limits, no group chats, no secrets in logs. Honest demo la
 ## What's next
 Wire the live camera and sensors in permanently. Finish the STM32 port. Turn automatic watering on after pump testing.
 
+## Market (added for TAM/SAM/SOM)
+Source: USDA NASS, "Citrus Fruits 2025 Summary", August 2026, 2025-26 season, value of production
+(packinghouse-door equivalent): https://esmis.nal.usda.gov/sites/default/release-files/796038/cfrt0826.txt
+- US citrus: 428,400 bearing acres, $3,148,286 thousand (about $3.15B).
+- California citrus: 267,400 bearing acres, $2,734,170 thousand (about $2.73B).
+- California all oranges: 133,500 bearing acres (navel and misc. 109,000; Valencia 24,500), $721,659 thousand (about $722M).
+  The 2025-26 California Valencia estimates are preliminary.
+These figures are the value of the crop, not CutieFarm's revenue. There is no pricing, so no revenue figure.
+
 ## Honest status
 The bot runs on a team laptop. Until the camera and sensors are wired in permanently, it uses clearly labelled demo
 data. No deployments, users or accuracy figures are claimed.
