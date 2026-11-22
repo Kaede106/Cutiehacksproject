@@ -110,7 +110,7 @@ def init_pred(source):
             with torch.no_grad():
                 outputs = orange_model(cropped_image)
                 predictions = outputs.argmax(dim=1)
-            if predictions.item() != 0:
+            if predictions.item() != 1:
                 print("The orange is diseased.")
             else:
                 print("The orange is healthy.")
