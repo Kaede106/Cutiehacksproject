@@ -1,7 +1,7 @@
 #include <DHT11.h>
 #include <DHT.h>
 
-#define DHTPIN 12
+#define DHTPIN 13
 #define DHTTYPE DHT11
 
 #define STEPS 32  // Number of steps per revolution of Internal shaft
@@ -9,6 +9,10 @@
 #define I1 4      // Axe de commande 1 pour moteur
 #define I2 5      // Broche de commande 2 pour moteur
 #define TEMP_SENSOR A1
+#define LED 2
+#define LEFTLED 12
+#define RIGHTLED 3
+#define MOTOR 4
 #include "Stepper.h"
 int Steps2Take;  // 2048 = 1 Revolution
 
@@ -18,8 +22,6 @@ const int SENSOR_PIN = A0;
 const int DRY_VALUE = 590;  // Value read in open dry air
 const int WET_VALUE = 280;  // Value read submerged in a cup of water
 
-const int ledPin = 3;
-
 Stepper small_stepper(STEPS, 8, 10, 9, 11);
 
 //DHT11 dht11(12);
@@ -27,7 +29,10 @@ DHT dht(DHTPIN, DHTTYPE);
 
 void setup() {
   Serial.begin(9600);
-  pinMode(ledPin, OUTPUT);
+  pinMode(LED, OUTPUT);
+  pinMode(LEFTLED, OUTPUT);
+  pinMode(RIGHTLED, OUTPUT);
+  pinMode(MOTOR, OUTPUT);
   pinMode(E1, OUTPUT);
   pinMode(I1, OUTPUT);
   pinMode(I2, OUTPUT);
@@ -73,9 +78,9 @@ void loop() {
   moisturePercent = constrain(moisturePercent, 0, 100);
   Serial.println(moisturePercent);
   if (moisturePercent > 50) {
-    digitalWrite(ledPin, LOW);
+    //digitalWrite(LED, LOW);
   } else {
-    digitalWrite(ledPin, HIGH);
+    //digitalWrite(LED, HIGH);
   }
   small_stepper.setSpeed(500);  //Max seems to be 500
   Steps2Take = 100;             // Rotate CW
@@ -83,6 +88,43 @@ void loop() {
   analogWrite(E1, 153);  // Courir à la moitié de la vitesse
   digitalWrite(I1, HIGH);
   digitalWrite(I2, LOW);
+
+  if (Serial.available()) {
+    String message = Serial.readStringUntil('\n');
+
+    int separator = message.indexOf('|');
+
+    String first = message.substring(0, separator);
+    String second = message.substring(separator + 1);
+
+    int prediction = first.toInt();
+    int motorPosition = second.toInt();
+
+    // Handle irrigation prediction
+    if (prediction == 50) {
+      // Turn on irrigation
+      digitalWrite(LED, LOW);
+      digitalWrite(MOTOR, LOW);
+    } else {
+      // Turn off irrigation
+      digitalWrite(LED, HIGH);
+      digitalWrite(MOTOR, HIGH);
+    }
+
+    if (motorPosition == 0) {
+      // Move motor left
+      digitalWrite(LEFTLED, HIGH);
+      digitalWrite(RIGHTLED, LOW);
+    } else if (motorPosition == 1) {
+      // Move motor to middle
+      digitalWrite(LEFTLED, LOW);
+      digitalWrite(RIGHTLED, LOW);
+    } else if (motorPosition == 2) {
+      // Move motor right
+      digitalWrite(LEFTLED, LOW);
+      digitalWrite(RIGHTLED, HIGH);
+    }
+  }
   delay(1000);
 }
 

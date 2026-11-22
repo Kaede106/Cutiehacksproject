@@ -3,10 +3,15 @@ from python.ml.image_classification.initial_prediction import init_pred
 
 cap = cv2.VideoCapture(0)
 
-while True:
+def cam():
     ret, frame = cap.read()
     if not ret:
-        break
+        return 1
     results = init_pred(frame)
-
-    #cv2.imshow("YOLO Webcam Detection", frame)
+    print(results)
+    if len(results)==0:
+        return 1
+    s = results[0][0]
+    return 0 if s < 260 else 2 if s > 340 else 1
+while True:
+    print(cam())
