@@ -11,8 +11,8 @@ The in-browser orange scanner. It reads the centre square of a webcam frame (or 
 | `classifier.js` | The classifier interface and the default colour heuristic (`createColorClassifier`). Everything except the factory is a pure function on `{ data, width, height }`. |
 | `smoothing.js` | Smooths readings over time (EMA, about 0.4 s time constant, with hysteresis) so the label doesn't flicker. It works with any classifier. |
 | `camera.js` | Feature detection (secure context, `getUserMedia`), the permission query, opening and stopping the stream, and mapping errors to states. |
-| `samples.js` | Four procedural sample images (green, turning, deep orange, empty crate), rendered per pixel with no canvas so Node can test them. |
-| `classifier.test.mjs` | Node test: synthetic buffers, the four samples, the ROI maths and the smoother. |
+| `samples.js` | Four sample photos (green, turning, deep orange, empty bowl) served locally as WebP with JPEG fallbacks. See `public/CREDITS.md` for sources. |
+| `classifier.test.mjs` | Node test: synthetic buffers, pixel fixtures from the four sample photos, the ROI maths and the smoother. |
 | `dev.html` | Standalone harness with token values, a dark-mode toggle, an event log and a mount/destroy stress button. |
 
 ## Run
@@ -24,6 +24,8 @@ npx vite                               # then open http://localhost:5173/src/sca
 ```
 
 The camera needs HTTPS or `localhost`. Over a LAN IP on plain http the scanner shows the "needs a secure page" message, and the samples still work.
+
+The sample tests read gzip-compressed RGBA fixtures captured from Chrome’s 128 × 128 analysis canvas when each WebP sample was selected. If a sample changes, select both formats in a browser and check the label and confidence. For the Node fixture, capture the `getImageData` bytes passed to the classifier for the WebP, gzip them, and update the matching WebP SHA-256 in `fixtures/webp-sha256.json`.
 
 ## Classifier interface
 
@@ -76,7 +78,7 @@ The full set of thresholds is in `THRESHOLDS` in `classifier.js`.
 - **Lighting and white balance.** Warm indoor light pushes green peel towards yellow, and cool LED light pushes orange towards yellow. Coloured stage lighting breaks it. Even, white light works best.
 - **Skin tones.** The YCbCr filter removes most skin, but very saturated dark skin (S > 0.72) can pass as orange peel. A dull, brownish orange in dim warm light can be filtered out as skin.
 - **Region of interest.** It reads only the centre square, 60% of the frame height. Peel outside the square cannot contribute to the reading.
-- **The samples are synthetic.** The test proves the code is consistent with itself. It says nothing about accuracy on real oranges, and the page should not claim any.
+- **The sample photos are curated.** They exercise the four scanner outcomes. Accuracy across orchards, lighting and varieties has yet to be measured.
 
 ## Left open
 

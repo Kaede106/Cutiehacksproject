@@ -20,7 +20,7 @@ CutieFarm is a Cutiehacks prototype for two questions: is this orange ready to p
 - A new scan with more ripe oranges triggers a ready-to-pick alert before the next daily update. The prototype demonstrates alerts with demo scans.
 - Ask “¿y las de la izquierda?” or “when should I water?” by text or voice. An OpenAI model answers from the latest farm data only.
 - Send a photo for a ripeness check. The bot uses the scanner’s peel-colour check and analyses the photo on the laptop.
-- At 9:00 every morning the bot says what to pick and when to water, with buttons for watering details and a reminder. Show the example as an illustration with a ripe orange attachment: “3 ready to pick, 5 ripening. Water on Thursday: hot, dry week ahead, so twice a week for now.”
+- At 9:00 every morning the bot says what to pick and when to water, with buttons for watering details and a reminder. Show the example with a photo of ripe oranges on a tree: “3 ready to pick, 5 ripening. Water on Thursday: hot, dry week ahead, so twice a week for now.”
 - Send “picked 3” or “he regado” to log work. The commands are `/picked` and `/watered`. Use `/week` for a 7-day summary and `/stop` to unsubscribe.
 
 The bot analyses photos on the laptop. Chat questions, recent chat context and a text summary of the latest farm data go to OpenAI for answers. Voice notes go to OpenAI for transcription. Photos sent through Telegram stay on the laptop for analysis and are never sent to OpenAI. The browser scanner uploads nothing.
