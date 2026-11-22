@@ -159,8 +159,13 @@ def listen(port: str | None, baud: int, every: float, soil: SoilCalibration, *,
            monotonic: Callable[[], float] = time.monotonic,
            now_iso: Callable[[], str] = store.now_iso,
            retry_s: float = 3.0,
-           stop: Callable[[], bool] = lambda: False) -> None:
-    """Read the board forever, reconnecting whenever it goes away."""
+           stop: Callable[[], bool] = lambda: False,
+           water: Any = None) -> None:
+    """Read the board forever, reconnecting whenever it goes away.
+
+    `water` is an optional farm.irrigation_control.WaterQueue: watering commands
+    from the bot are sent to the board while it is connected, and fail at once
+    while it is not."""
     averager = Averager(every, soil, write=write, monotonic=monotonic, now_iso=now_iso)
     waiting_logged = False
     open_error_logged = False  # log a failing port once per outage, not every retry
@@ -170,6 +175,8 @@ def listen(port: str | None, baud: int, every: float, soil: SoilCalibration, *,
             if not waiting_logged:
                 log.warning("no Arduino-like serial port found; waiting (or pass --port)")
                 waiting_logged = True
+            if water is not None:
+                water.poll_unavailable("no board connected to the laptop")
             sleep(retry_s)
             continue
         try:
@@ -179,12 +186,14 @@ def listen(port: str | None, baud: int, every: float, soil: SoilCalibration, *,
             if not open_error_logged:
                 log.warning("cannot open %s: %s.%s Retrying every %gs", device, e, hint, retry_s)
                 open_error_logged = True
+            if water is not None:
+                water.poll_unavailable(f"cannot open the board's port {device}")
             sleep(retry_s)
             continue
         waiting_logged = open_error_logged = False
         log.info("connected to %s at %d baud", device, baud)
         try:
-            _read_until_gone(ser, device, averager, devices, monotonic, stop)
+            _read_until_gone(ser, device, averager, devices, monotonic, stop, water)
         except OSError as e:
             log.warning("lost %s: %s", device, e)
         finally:
@@ -201,11 +210,13 @@ def listen(port: str | None, baud: int, every: float, soil: SoilCalibration, *,
 
 def _read_until_gone(ser: Any, device: str, averager: Averager,
                      devices: Callable[[], list[str]], monotonic: Callable[[], float],
-                     stop: Callable[[], bool]) -> None:
+                     stop: Callable[[], bool], water: Any = None) -> None:
     reader = LineReader(ser)
     first = True
     last_data = monotonic()
     while not stop():
+        if water is not None:
+            water.poll(ser)
         line = reader.read()
         if line is None:
             if monotonic() - last_data > SILENCE_CHECK_S:
@@ -218,6 +229,8 @@ def _read_until_gone(ser: Any, device: str, averager: Averager,
         if first:
             first = False  # may be the tail of a line sent before we connected
             log.debug("dropping first line after connect: %r", line)
+            continue
+        if water is not None and water.on_line(line):
             continue
         values = handle_line(line)
         if values is not None:

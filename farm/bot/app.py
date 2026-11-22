@@ -17,6 +17,7 @@ from farm.common import store
 
 from . import harvest
 from .access import is_allowed, photo_path
+from .autowater import AutoWater
 from .buttons import StatusButtons, status_keyboard
 from .chat import LIMIT_NOTICE, LIMITS_FILE, Conversation, LimitReached, farm_context, keyword_intent, strip_html
 from .compose import Message, Photo, _counts, compose
@@ -33,6 +34,7 @@ log = logging.getLogger("farm.bot")
 COMMANDS = [
     ("status", "See what is ready to pick and when to water"),
     ("water", "Watering advice and what it is based on"),
+    ("water_now", "Water the grove now, after a safety check"),
     ("picked", "Log oranges picked, for example /picked 3"),
     ("watered", "Log that you watered today"),
     ("undo", "Undo this chat's last harvest log entry"),
@@ -174,6 +176,7 @@ class Handlers:
             "",
             "/status: what is ready to pick and when to water",
             "/water: watering advice and what it is based on",
+            "/water_now: run the pump now, after a safety check and your OK",
             "/picked 3, /watered: log what you did",
             "/undo: undo this chat's last harvest log entry",
             "/week: see the last 7 days of scans and harvest activity",
@@ -447,6 +450,7 @@ def build_application(config: Config) -> Application:
 
     app = Application.builder().token(config.token).post_init(post_init).concurrent_updates(8).build()
     unedited = ~filters.UpdateType.EDITED & ~filters.UpdateType.EDITED_BUSINESS_MESSAGE
+    AutoWater(handlers, water_advice).register(app, unedited)  # /water_now, its buttons, auto mode
     app.add_handler(CallbackQueryHandler(StatusButtons(handlers).handle))
     app.add_handler(CommandHandler("start", handlers.start, filters=unedited))
     app.add_handler(CommandHandler("stop", handlers.stop, filters=unedited))
