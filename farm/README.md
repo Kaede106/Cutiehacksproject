@@ -4,6 +4,14 @@ CutieFarm tells the grower which oranges are ready to pick and when the grove ne
 
 **New laptop (Windows):** from the repo root, run `powershell -ExecutionPolicy Bypass -File farm\setup.ps1` (add `--simulate-sensors` to use simulated sensor data). It creates the venv, installs everything, checks `farm/bot/.env`, lists the serial ports and starts the hub. Run the bot on only one laptop at a time.
 
+## Pitch demo on the presenter's laptop
+
+1. **Well before the pitch** (it downloads YOLO and torch): `powershell -ExecutionPolicy Bypass -File farm\demo.ps1 -InstallOnly`
+2. Copy `farmot\.env` to that laptop privately (USB or a direct message). Never commit it.
+3. Stop the bot on every other laptop: one bot per token.
+4. Start it: `powershell -ExecutionPolicy Bypass -File farm\demo.ps1`. Add `-Camera` to scan real oranges with the webcam, and `-Arduino` if the board is plugged in. It uses its own data folder, `farm\data-pitch`, seeds clearly marked demo data, starts the bot, the sensors and the control room, and opens the dashboard and the landing page.
+5. For a live camera window with boxes, open a second terminal: `farmot\.venv\Scripts\python -m farm.vision live`
+
 One command starts everything that runs on the laptop:
 
 ```powershell
