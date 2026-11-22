@@ -1,10 +1,10 @@
 # CutieFarm product brief
 
-CutieFarm is a Cutiehacks prototype for two questions: is this orange ready to pick, and does the grove need water? Mold and disease detection were dropped from the product.
+CutieFarm is a Cutiehacks prototype for three questions. Is each orange ready to pick? Is it healthy? Does the grove need water?
 
 ## What judges can try today
 
-- The browser scanner estimates ripeness from peel colour in the centre of a webcam frame or a sample image. It runs entirely on the visitor’s device.
+- The browser scanner only estimates ripeness, using peel colour in the centre of a webcam frame or a sample image. It runs entirely on the visitor’s device. The health check runs on the team laptop.
 - [@CutieFarmGroveBot](https://t.me/CutieFarmGroveBot?start=landing) runs on a team laptop. It labels demo scans and simulated sensor readings while the team connects the hardware. It sends updates while the laptop is running.
 - The watering simulator lets visitors change sample soil and weather inputs and see the suggested schedule.
 - A demo snapshot of the control room at `/dashboard/`, made from demo data (see below).
@@ -15,11 +15,14 @@ CutieFarm is a Cutiehacks prototype for two questions: is this orange ready to p
 | Ripening | Green turning yellow or orange | Check again in a few days |
 | Ready to pick | Even, deep orange peel | Harvest |
 
+The laptop health check classifies each orange as healthy or flags it for possible disease (citrus canker or melanose).
+
 ## Telegram prototype
 
 - A new scan with more ripe oranges triggers a ready-to-pick alert before the next daily update. The prototype demonstrates alerts with demo scans.
 - Ask “¿y las de la izquierda?” or “when should I water?” by text or voice. An OpenAI model answers from the latest farm data only.
 - Send a photo for a ripeness check. The bot uses the scanner’s peel-colour check and analyses the photo on the laptop.
+- The landing page shows a demo health message: “One orange may have citrus canker. Take a closer look.”
 - At 9:00 every morning the bot says what to pick and when to water, with buttons for watering details and a reminder. Show the example with a photo of ripe oranges on a tree: “3 ready to pick, 5 ripening. Water on Thursday: hot, dry week ahead, so twice a week for now.”
 - Send “picked 3” or “he regado” to log work. The commands are `/picked` and `/watered`. Use `/week` for a 7-day summary and `/stop` to unsubscribe.
 
@@ -33,7 +36,7 @@ The public site cannot link to it. Instead it serves a static demo snapshot at `
 
 ## Hardware being connected
 
-- Laptop camera: YOLO finds each orange and the colour check estimates ripeness. The team is finishing the camera program.
+- Laptop camera: YOLO finds each orange, the peel-colour check estimates ripeness, and the team’s trained PyTorch CNN checks each orange for possible disease. The model classes are healthy, citrus canker and melanose. The team is connecting the camera feed to the bot.
 - Arduino: reads soil moisture, temperature and humidity. The team is connecting the board. The watering advice uses those readings plus the forecast. It checks soil moisture first and uses estimated water demand to set the schedule. Treat the advice as a rule of thumb.
 
 ## Audience and constraints

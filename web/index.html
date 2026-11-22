@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CutieFarm | Which oranges to pick and when to water</title>
-    <meta name="description" content="Check orange ripeness in your browser. Try the CutieFarm Telegram prototype for harvest alerts and watering advice with demo data." />
+    <title>CutieFarm | Orange ripeness, fruit health and watering</title>
+    <meta name="description" content="Check orange ripeness in your browser. CutieFarm’s laptop model flags possible disease in each orange, and the watering simulator shows when the grove may need water." />
     <meta name="theme-color" content="#1F5A35" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="CutieFarm | Which oranges to pick and when to water" />
-    <meta property="og:description" content="Check orange ripeness in your browser. Try the CutieFarm Telegram prototype for harvest alerts and watering advice with demo data." />
+    <meta property="og:title" content="CutieFarm | Orange ripeness, fruit health and watering" />
+    <meta property="og:description" content="Check orange ripeness in your browser. CutieFarm’s laptop model flags possible disease in each orange, and the watering simulator shows when the grove may need water." />
     <link rel="stylesheet" href="/src/styles.css" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -65,8 +65,8 @@
 
       <div class="hero-copy wrap">
         <div class="hero-main">
-          <h1>Know which oranges to pick and when to water.</h1>
-          <p class="hero-lead">Check an orange by its peel colour. Try harvest alerts and watering advice on Telegram with demo grove data.</p>
+          <h1>Which oranges to pick, which look sick and when to water</h1>
+          <p class="hero-lead">Check orange ripeness in your browser. On the laptop, our model flags oranges that may be diseased. Try watering advice on Telegram with demo grove data.</p>
           <div class="hero-actions">
             <a class="button" href="#demo" data-jump>Scan an orange</a>
             <p class="hero-note">No orange to hand? Try the sample images.</p>
@@ -90,7 +90,7 @@
       <section class="telegram wrap" aria-labelledby="telegram-title">
         <div class="telegram-intro">
           <h2 id="telegram-title">Try the Telegram bot</h2>
-          <p>The prototype runs on a team laptop. It labels its demo scans and simulated sensor readings while we connect the camera and board.</p>
+          <p>The prototype runs on a team laptop and uses labelled demo scans and simulated sensor readings.</p>
           <div class="tg-cta" data-telegram-cta hidden>
             <a class="button button--small" data-telegram-link href="#" rel="noopener">Get it on Telegram</a>
             <div class="tg-qr" data-telegram-qr role="img" aria-label="QR code that opens the CutieFarm bot in Telegram"></div>
@@ -118,6 +118,11 @@
               <p>The laptop runs the same peel-colour check as the scanner.</p>
             </li>
             <li>
+              <h3>Possible disease</h3>
+              <p class="telegram-bubble"><span class="sr-only">Bot: </span>One orange may have citrus canker. Take a closer look.</p>
+              <p>On the laptop, YOLO finds each orange, a peel-colour check estimates ripeness, and our PyTorch CNN flags fruit that may have citrus canker or melanose.</p>
+            </li>
+            <li>
               <h3>Every morning at 9:00</h3>
               <p class="telegram-bubble"><span class="sr-only">Bot: </span>3 ready to pick, 5 ripening. Water on Thursday.</p>
               <p>The daily update includes buttons for watering details and a reminder.</p>
@@ -134,7 +139,8 @@
 
       <section class="states wrap" aria-labelledby="states-title">
         <div class="states-intro">
-          <h2 id="states-title">One state for every orange</h2>
+          <h2 id="states-title">Ripeness and health</h2>
+          <p>The health check labels fruit healthy or flags possible citrus canker or melanose.</p>
         </div>
         <table class="states-table">
           <thead>
@@ -330,6 +336,7 @@
           <div class="demo-copy">
             <h2 id="demo-title" tabindex="-1">Try the scanner</h2>
             <p>Hold one orange in the square or choose a sample. The scanner estimates ripeness from peel colour.</p>
+            <p>The health check runs on the laptop with the team’s CNN.</p>
             <p>Frames never leave your device. Nothing is uploaded, and there is no backend.</p>
           </div>
           <div class="viewfinder">
@@ -343,12 +350,12 @@
         <div class="build-body">
           <div class="build-cols">
             <div class="build-col">
-              <h3>So far</h3>
-              <p>The browser scanner and the Telegram photo check estimate ripeness from peel colour. The bot runs on a team laptop with demo scans and simulated readings.</p>
+              <h3>On the laptop</h3>
+              <p>YOLO finds each orange. A peel-colour check estimates ripeness, and the convolutional neural network (CNN) we trained in PyTorch flags possible citrus canker or melanose.</p>
             </div>
             <div class="build-col">
               <h3>Next</h3>
-              <p>Finish the laptop camera program. YOLO finds each orange and the colour check judges its ripeness. Then connect the camera feed and the sensor board to the bot.</p>
+              <p>Connect the camera feed and the sensor board to the bot.</p>
             </div>
           </div>
           <div class="build-control">
@@ -366,7 +373,7 @@
         <h2 id="why-title">Why oranges</h2>
         <div class="why-body">
           <p>We built this at Cutiehacks in Riverside, a city that grew up on oranges. The tree that started California’s navel orange industry still stands here.</p>
-          <p>We started with two questions a grower asks while walking the rows: which oranges are ready to pick, and does the grove need water?</p>
+          <p>We built CutieFarm to help growers decide which oranges to pick, which to inspect for disease and when to water.</p>
           <p class="why-sign">The CutieFarm team</p>
         </div>
       </section>
