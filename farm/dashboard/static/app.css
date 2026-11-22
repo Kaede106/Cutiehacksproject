@@ -343,3 +343,6 @@ h2 { font-size: 1.3rem; }
 }
 
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+
+/* Live camera badge: shown while the camera window streams frames. */
+.stage-note.live-note { left: 16px; right: auto; top: 16px; bottom: auto; background: #c62828; color: #fff; font-weight: 700; }

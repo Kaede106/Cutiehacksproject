@@ -114,6 +114,15 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, body, "application/json; charset=utf-8")
         if path.startswith("/scans/"):
             return self._image(unquote(path[len("/scans/"):]))
+        if path == "/live/frame.jpg":  # the camera window's latest frame: one fixed file, no names from the URL
+            frame = state.live_frame_path(state.data_folder())
+            if frame is None:
+                return self._error(HTTPStatus.NOT_FOUND)
+            try:
+                body = frame.read_bytes()
+            except OSError:
+                return self._error(HTTPStatus.NOT_FOUND)
+            return self._send(200, body, "image/jpeg")
         self._error(HTTPStatus.NOT_FOUND)
 
     def _image(self, name: str) -> None:
