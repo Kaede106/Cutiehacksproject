@@ -4,6 +4,7 @@ Cómo leer este guion:
 - **[→]** es un clic (flecha derecha o el mando). Cada clic coincide con un *beat* del deck. Habla y **después** pasa: la diapositiva acompaña a la frase, no la anuncia.
 - *Las notas en cursiva* son indicaciones para el presentador. No se dicen en voz alta.
 - Lo que se dice está en inglés y entre comillas, a unas 120 palabras por minuto, con pausas. Los tiempos son acumulados.
+- Ahora hay 10 escenas y 44 clics. Las teclas 1–9 saltan a las escenas 1–9; el cierre se alcanza con → o con End.
 - Antes de empezar, abre la ventana del presentador con la tecla **P**. Muestra la nota de cada beat, el siguiente beat y un reloj.
 
 ---
@@ -111,7 +112,21 @@ Cómo leer este guion:
 
 ---
 
-## 5 · Demo (3:20 → 4:35, unos 75 s en total)
+## 4b · Market (3:20 → 3:45)
+
+**[→] TAM**
+> "Who is this for? Citrus in the US was a **3.15 billion dollar** crop last season, on about 428 thousand acres. That's the value of the crop we watch over, not our revenue."
+
+**[→] SAM**
+> "California alone grows **2.73 billion** of it. That's the market we can serve with a webcam, an Arduino and a Telegram bot."
+
+**[→] SOM**
+> "And we start with California oranges: a **722 million dollar** crop, and navel oranges began right here in Riverside."
+> *La fuente sale en pantalla (USDA, temporada 2025-26). Si el jurado pregunta por ingresos, di que estas cifras son el valor de la cosecha y que el modelo de precios por acre está por definir.*
+
+---
+
+## 5 · Demo (3:45 → 4:55, unos 70 s en total)
 
 **[→] Camera + dashboard**
 > "Let me show you."
@@ -135,7 +150,7 @@ Cómo leer este guion:
 
 ---
 
-## 6 · How we built it (4:35 → 5:15)
+## 6 · How we built it (4:55 → 5:25)
 
 **[→] Shared folder**
 > "How we built it. In the middle there's one shared data folder, full of append-only files."
@@ -157,7 +172,7 @@ Cómo leer este guion:
 
 ---
 
-## 7 · What we learned (5:15 → 5:40)
+## 7 · What we learned (5:25 → 5:45)
 
 **[→] STM32**
 > "What fought back: we started on an STM32 board. It fought us, so we switched to an Arduino to keep moving."
@@ -173,7 +188,7 @@ Cómo leer este guion:
 
 ---
 
-## 8 · What's next (5:40 → 5:50)
+## 8 · What's next (5:45 → 5:52)
 
 **[→] Wire it in**
 > "Next: wire the camera and sensors in for good,"
@@ -186,7 +201,7 @@ Cómo leer este guion:
 
 ---
 
-## 9 · Close (5:50 → 6:00)
+## 9 · Close (5:52 → 6:00)
 
 **[→] A grove that watches itself**
 > "Like those Minecraft farms: build it once, and **the grove watches itself.**"
@@ -221,10 +236,11 @@ Cómo leer este guion:
 | 2 Problem | 1:15 |
 | 3 Three answers | 2:35 |
 | 4 Bot | 3:20 |
-| 5 Demo | 4:35 |
-| 6 Built | 5:15 |
-| 7 Learned | 5:40 |
-| 8 Next | 5:50 |
+| 4b Market | 3:45 |
+| 5 Demo | 4:55 |
+| 6 Built | 5:25 |
+| 7 Learned | 5:45 |
+| 8 Next | 5:52 |
 | 9 Close | 6:00 |
 
-Si vas tarde al acabar la demo (más de 4:45), pasa la escena 7 con una frase por beat, sin pararte.
+Si vas tarde al acabar la demo (más de 5:00), pasa la escena 7 con una frase por beat, sin pararte.
