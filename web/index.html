@@ -22,7 +22,10 @@
     <header class="hero hero--top" id="top">
       <div class="masthead wrap">
         <a class="wordmark" href="#top">
-          <svg class="wordmark-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M17 8.5c2.6-4.6 7.4-6 11-5-1 4.2-5 7.2-11 5Z" fill="#7FB24A"/><circle cx="15" cy="18.5" r="11" fill="#F58A1E"/><circle cx="11" cy="14.5" r="2.6" fill="#fff" fill-opacity=".35"/></svg>
+          <picture class="wordmark-mark">
+            <source type="image/webp" srcset="/photos/state-deep.webp" />
+            <img src="/photos/state-deep.jpg" width="30" height="30" decoding="async" alt="" />
+          </picture>
           <span translate="no">CutieFarm</span>
         </a>
         <nav class="masthead-nav" aria-label="Page">
@@ -72,13 +75,11 @@
         <figure class="daily" aria-labelledby="daily-caption">
           <figcaption id="daily-caption" class="daily-caption">Example 9:00 Telegram message</figcaption>
           <div class="daily-msg">
-            <svg class="daily-photo" viewBox="0 0 320 132" role="img" aria-label="Illustrated attachment of a ripe orange" focusable="false"><rect width="320" height="132" fill="#17462A"/><defs>
-<radialGradient id="p-unripe" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#C3DB78"/><stop offset=".45" stop-color="#7FA63B"/><stop offset="1" stop-color="#3F661C"/></radialGradient>
-<radialGradient id="p-ripening" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#FBE08A"/><stop offset=".5" stop-color="#E3A630"/><stop offset="1" stop-color="#8E7E22"/></radialGradient>
-<radialGradient id="p-ripe" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#FFCB7E"/><stop offset=".48" stop-color="#F58A1E"/><stop offset="1" stop-color="#B9520B"/></radialGradient>
-<radialGradient id="p-green" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#86A83A" stop-opacity=".95"/><stop offset="1" stop-color="#86A83A" stop-opacity="0"/></radialGradient>
-<pattern id="p-pores" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#5A2A00" fill-opacity=".14"/><circle cx="6.5" cy="6" r=".9" fill="#5A2A00" fill-opacity=".1"/></pattern>
-</defs><g transform="translate(10 30) rotate(10)"><path d="M0 0C30 -30 84 -27 120 0C84 22.5 30 27 0 0Z" fill="#245F38"/><path d="M4.8 0Q60 -3.6 112.8 0" fill="none" stroke="#0E2E19" stroke-opacity=".35" stroke-width="2"/></g><g transform="translate(215 14) rotate(170)"><path d="M0 0C30 -30 84 -27 120 0C84 22.5 30 27 0 0Z" fill="#1A4A2B"/><path d="M4.8 0Q60 -3.6 112.8 0" fill="none" stroke="#0E2E19" stroke-opacity=".35" stroke-width="2"/></g><g transform="translate(236 118) rotate(-20)"><path d="M0 0C27.5 -28 77 -25.2 110 0C77 21 27.5 25.2 0 0Z" fill="#2B6A40"/><path d="M4.4 0Q55 -3.4 103.4 0" fill="none" stroke="#0E2E19" stroke-opacity=".35" stroke-width="2"/></g><g transform="translate(-10 120) rotate(-30)"><path d="M0 0C30 -30 84 -27 120 0C84 22.5 30 27 0 0Z" fill="#163F25"/><path d="M4.8 0Q60 -3.6 112.8 0" fill="none" stroke="#0E2E19" stroke-opacity=".35" stroke-width="2"/></g><g transform="translate(70 140) rotate(-60)"><path d="M0 0C22.5 -24 63 -21.6 90 0C63 18 22.5 21.6 0 0Z" fill="#2F7346"/><path d="M3.6 0Q45 -2.9 84.6 0" fill="none" stroke="#0E2E19" stroke-opacity=".35" stroke-width="2"/></g><g class="fruit"><path d="M160 31.7q4.2 -21 2.1 -39.9" stroke="#30401F" stroke-width="2.9" fill="none" stroke-linecap="round"/><ellipse cx="160" cy="68" rx="42" ry="40.3" fill="url(#p-ripe)"/><ellipse cx="160" cy="68" rx="42" ry="40.3" fill="url(#p-pores)"/><ellipse cx="145.7" cy="51.2" rx="9.2" ry="5" transform="rotate(-30 145.7 51.2)" fill="#FFFFFF" fill-opacity=".32"/><path d="M160 27.1L161.4 30.6L165.2 30.9L162.3 33.4L163.2 37L160 35.1L156.8 37L157.7 33.4L154.8 30.9L158.6 30.6Z" fill="#4C6A24"/></g><path d="M108 29.4V16H121.4M198.6 16H212V29.4M212 106.6V120H198.6M121.4 120H108V106.6" fill="none" stroke="#FFC796" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <picture>
+              <source type="image/webp" srcset="/photos/daily.webp" />
+              <img class="daily-photo" src="/photos/daily.jpg" width="800" height="330"
+                loading="lazy" decoding="async" alt="Ripe oranges hanging from a tree." />
+            </picture>
             <p class="daily-text">3 ready to pick, 5 ripening. Water on Thursday: hot, dry week ahead, so twice a week for now.</p>
             <p class="daily-time"><time datetime="09:00">9:00</time></p>
           </div>
@@ -145,35 +146,41 @@
           </thead>
           <tbody>
             <tr data-state="unripe">
-              <th scope="row"><span class="state-name"><svg class="state-fruit" viewBox="0 0 80 80" aria-hidden="true" focusable="false"><defs>
-<radialGradient id="sun-unripe" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#C3DB78"/><stop offset=".45" stop-color="#7FA63B"/><stop offset="1" stop-color="#3F661C"/></radialGradient>
-<radialGradient id="sun-ripening" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#FBE08A"/><stop offset=".5" stop-color="#E3A630"/><stop offset="1" stop-color="#8E7E22"/></radialGradient>
-<radialGradient id="sun-ripe" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#FFCB7E"/><stop offset=".48" stop-color="#F58A1E"/><stop offset="1" stop-color="#B9520B"/></radialGradient>
-<radialGradient id="sun-green" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#86A83A" stop-opacity=".95"/><stop offset="1" stop-color="#86A83A" stop-opacity="0"/></radialGradient>
-<pattern id="sun-pores" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#5A2A00" fill-opacity=".14"/><circle cx="6.5" cy="6" r=".9" fill="#5A2A00" fill-opacity=".1"/></pattern>
-</defs><g transform="translate(40 15) rotate(-28)"><path d="M0 0C9 -11 25 -10 34 0C25 8 9 9 0 0Z" fill="#2B6A40"/></g><g class="fruit"><path d="M40 23.1q2.8 -14 1.4 -26.6" stroke="#30401F" stroke-width="2.5" fill="none" stroke-linecap="round"/><ellipse cx="40" cy="46" rx="28" ry="26.9" fill="url(#sun-unripe)"/><ellipse cx="40" cy="46" rx="28" ry="26.9" fill="url(#sun-pores)"/><ellipse cx="30.5" cy="34.8" rx="6.2" ry="3.4" transform="rotate(-30 30.5 34.8)" fill="#FFFFFF" fill-opacity=".32"/><path d="M40 18.7L41.1 21.3L43.8 21.5L41.7 23.3L42.4 26L40 24.5L37.6 26L38.3 23.3L36.2 21.5L38.9 21.3Z" fill="#4C6A24"/></g></svg>Unripe</span></th>
+              <th scope="row">
+                <span class="state-name">
+                  <picture class="state-fruit">
+                    <source type="image/webp" srcset="/photos/state-green.webp" />
+                    <img src="/photos/state-green.jpg" width="64" height="64" loading="lazy" decoding="async" alt="" />
+                  </picture>
+                  Unripe
+                </span>
+              </th>
               <td>Mostly green peel</td>
               <td class="state-action">Leave it on the tree.</td>
             </tr>
             <tr data-state="ripening">
-              <th scope="row"><span class="state-name"><svg class="state-fruit" viewBox="0 0 80 80" aria-hidden="true" focusable="false"><defs>
-<radialGradient id="sri-unripe" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#C3DB78"/><stop offset=".45" stop-color="#7FA63B"/><stop offset="1" stop-color="#3F661C"/></radialGradient>
-<radialGradient id="sri-ripening" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#FBE08A"/><stop offset=".5" stop-color="#E3A630"/><stop offset="1" stop-color="#8E7E22"/></radialGradient>
-<radialGradient id="sri-ripe" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#FFCB7E"/><stop offset=".48" stop-color="#F58A1E"/><stop offset="1" stop-color="#B9520B"/></radialGradient>
-<radialGradient id="sri-green" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#86A83A" stop-opacity=".95"/><stop offset="1" stop-color="#86A83A" stop-opacity="0"/></radialGradient>
-<pattern id="sri-pores" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#5A2A00" fill-opacity=".14"/><circle cx="6.5" cy="6" r=".9" fill="#5A2A00" fill-opacity=".1"/></pattern>
-</defs><g transform="translate(40 15) rotate(-28)"><path d="M0 0C9 -11 25 -10 34 0C25 8 9 9 0 0Z" fill="#2B6A40"/></g><g class="fruit"><path d="M40 23.1q2.8 -14 1.4 -26.6" stroke="#30401F" stroke-width="2.5" fill="none" stroke-linecap="round"/><ellipse cx="40" cy="46" rx="28" ry="26.9" fill="url(#sri-ripening)"/><ellipse cx="44.2" cy="33.4" rx="19.6" ry="12.6" fill="url(#sri-green)"/><ellipse cx="40" cy="46" rx="28" ry="26.9" fill="url(#sri-pores)"/><ellipse cx="30.5" cy="34.8" rx="6.2" ry="3.4" transform="rotate(-30 30.5 34.8)" fill="#FFFFFF" fill-opacity=".32"/><path d="M40 18.7L41.1 21.3L43.8 21.5L41.7 23.3L42.4 26L40 24.5L37.6 26L38.3 23.3L36.2 21.5L38.9 21.3Z" fill="#4C6A24"/></g></svg>Ripening</span></th>
+              <th scope="row">
+                <span class="state-name">
+                  <picture class="state-fruit">
+                    <source type="image/webp" srcset="/photos/state-turning.webp" />
+                    <img src="/photos/state-turning.jpg" width="64" height="64" loading="lazy" decoding="async" alt="" />
+                  </picture>
+                  Ripening
+                </span>
+              </th>
               <td>Green turning yellow or orange</td>
               <td class="state-action">Check again in a few days.</td>
             </tr>
             <tr data-state="ripe">
-              <th scope="row"><span class="state-name"><svg class="state-fruit" viewBox="0 0 80 80" aria-hidden="true" focusable="false"><defs>
-<radialGradient id="sre-unripe" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#C3DB78"/><stop offset=".45" stop-color="#7FA63B"/><stop offset="1" stop-color="#3F661C"/></radialGradient>
-<radialGradient id="sre-ripening" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#FBE08A"/><stop offset=".5" stop-color="#E3A630"/><stop offset="1" stop-color="#8E7E22"/></radialGradient>
-<radialGradient id="sre-ripe" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#FFCB7E"/><stop offset=".48" stop-color="#F58A1E"/><stop offset="1" stop-color="#B9520B"/></radialGradient>
-<radialGradient id="sre-green" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#86A83A" stop-opacity=".95"/><stop offset="1" stop-color="#86A83A" stop-opacity="0"/></radialGradient>
-<pattern id="sre-pores" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#5A2A00" fill-opacity=".14"/><circle cx="6.5" cy="6" r=".9" fill="#5A2A00" fill-opacity=".1"/></pattern>
-</defs><g transform="translate(40 15) rotate(-28)"><path d="M0 0C9 -11 25 -10 34 0C25 8 9 9 0 0Z" fill="#2B6A40"/></g><g class="fruit"><path d="M40 23.1q2.8 -14 1.4 -26.6" stroke="#30401F" stroke-width="2.5" fill="none" stroke-linecap="round"/><ellipse cx="40" cy="46" rx="28" ry="26.9" fill="url(#sre-ripe)"/><ellipse cx="40" cy="46" rx="28" ry="26.9" fill="url(#sre-pores)"/><ellipse cx="30.5" cy="34.8" rx="6.2" ry="3.4" transform="rotate(-30 30.5 34.8)" fill="#FFFFFF" fill-opacity=".32"/><path d="M40 18.7L41.1 21.3L43.8 21.5L41.7 23.3L42.4 26L40 24.5L37.6 26L38.3 23.3L36.2 21.5L38.9 21.3Z" fill="#4C6A24"/></g></svg>Ready to pick</span></th>
+              <th scope="row">
+                <span class="state-name">
+                  <picture class="state-fruit">
+                    <source type="image/webp" srcset="/photos/state-deep.webp" />
+                    <img src="/photos/state-deep.jpg" width="64" height="64" loading="lazy" decoding="async" alt="" />
+                  </picture>
+                  Ready to pick
+                </span>
+              </th>
               <td>Even, deep orange peel</td>
               <td class="state-action">Harvest it.</td>
             </tr>

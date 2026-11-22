@@ -6,13 +6,11 @@ import './scanner.css';
 import { createColorClassifier, confidenceLevel, centerRoi, VIEW_ASPECT, LABELS } from './classifier.js';
 import { createSmoother } from './smoothing.js';
 import { getCameraSupport, queryCameraPermission, openCamera, describeCameraError, stopStream } from './camera.js';
-import { SAMPLES, SAMPLE_WIDTH, SAMPLE_HEIGHT, renderSample } from './samples.js';
+import { SAMPLES, SAMPLE_WIDTH, SAMPLE_HEIGHT } from './samples.js';
 
 const ANALYSIS_SIZE = 128;
 const FRAME_INTERVAL_MS = 160; // about six readings a second
 const ANNOUNCE_DELAY_MS = 600;
-const THUMB_WIDTH = 120;
-const THUMB_HEIGHT = 90;
 
 const STATE_TEXT = {
   unripe: { title: 'Unripe', advice: 'Leave it on the tree.' },
@@ -63,6 +61,8 @@ const PANELS = {
   },
   error: { title: 'The camera couldn’t start.', body: (err) => (err && err.name ? `Error: ${err.name}.` : ''), actions: ['retry', 'samples'] },
   classifier: { title: 'The reading failed.', body: (err) => (err && err.message) || '', actions: ['retry', 'samples'] },
+  sampleLoading: { title: 'Loading sample photo…', actions: [] },
+  sampleError: { title: 'The sample photo couldn’t load.', body: 'Choose another sample.', actions: [] },
 };
 
 const CAMERA_NOTE = {
@@ -112,8 +112,6 @@ export function mountScanner(rootEl, options = {}) {
   let lastEmit = null;
   let announceTimer = null;
   let cameraUnavailable = support.ok ? null : support.reason;
-  const sampleCache = new Map();
-  const timers = new Set();
 
   // ---- DOM ---------------------------------------------------------------------------------
   const video = el('video', { class: 'cf-scanner__frame', 'aria-label': 'Camera preview', hidden: true });
@@ -141,7 +139,7 @@ export function mountScanner(rootEl, options = {}) {
   const cameraBar = el('div', { class: 'cf-scanner__bar' }, stopBtn, toSamplesBtn);
 
   const radios = new Map();
-  const thumbs = new Map();
+  const samplePhotos = new Map();
   const picker = el(
     'fieldset',
     { class: 'cf-scanner__picker' },
@@ -151,9 +149,12 @@ export function mountScanner(rootEl, options = {}) {
       { class: 'cf-scanner__options' },
       SAMPLES.map((s) => {
         const input = el('input', { type: 'radio', name: `${uid}-sample`, value: s.id, class: 'cf-scanner__radio', onchange: onSampleChange });
-        const thumb = el('span', { class: 'cf-scanner__thumb', 'aria-hidden': 'true' });
+        const source = el('source', { type: 'image/webp', srcset: `${s.path}.webp` });
+        const photo = el('img', { alt: '', width: SAMPLE_WIDTH, height: SAMPLE_HEIGHT, loading: 'lazy', decoding: 'async' });
+        const thumb = el('picture', { class: 'cf-scanner__thumb', 'aria-hidden': 'true' }, source, photo);
+        photo.src = `${s.path}.jpg`;
         radios.set(s.id, input);
-        thumbs.set(s.id, thumb);
+        samplePhotos.set(s.id, photo);
         return el('label', { class: 'cf-scanner__option' }, input, thumb, el('span', { class: 'cf-scanner__option-name', text: s.name }));
       }),
     ),
@@ -478,40 +479,6 @@ export function mountScanner(rootEl, options = {}) {
   }
 
   // ---- Samples -----------------------------------------------------------------------------
-  function renderSampleCanvas(id, width, height) {
-    const img = renderSample(id, width, height);
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    canvas.getContext('2d').putImageData(new ImageData(img.data, img.width, img.height), 0, 0);
-    return canvas;
-  }
-
-  function sampleImage(id) {
-    let canvas = sampleCache.get(id);
-    if (!canvas) {
-      canvas = renderSampleCanvas(id, SAMPLE_WIDTH, SAMPLE_HEIGHT);
-      sampleCache.set(id, canvas);
-    }
-    return canvas;
-  }
-
-  function drawThumb(id) {
-    const thumb = thumbs.get(id);
-    if (thumb.firstChild) return;
-    thumb.append(renderSampleCanvas(id, THUMB_WIDTH, THUMB_HEIGHT));
-  }
-
-  function queueThumbs() {
-    SAMPLES.forEach(({ id }, i) => {
-      const t = setTimeout(() => {
-        timers.delete(t);
-        if (!destroyed) drawThumb(id);
-      }, i * 30);
-      timers.add(t);
-    });
-  }
-
   function enterSamples(id, focusPicker = false) {
     if (destroyed) return;
     if (mode === 'camera' || mode === 'starting') releaseCamera();
@@ -536,11 +503,27 @@ export function mountScanner(rootEl, options = {}) {
     selectedSample = id;
     const gen = ++sampleGen;
     const meta = SAMPLES.find((s) => s.id === id);
-    const src = sampleImage(id);
-    drawThumb(id);
-    sampleCanvas.getContext('2d').drawImage(src, 0, 0);
+    const src = samplePhotos.get(id);
+    const canvasCtx = sampleCanvas.getContext('2d');
+    renderReading(null);
+    canvasCtx.clearRect(0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT);
+    sampleCanvas.removeAttribute('aria-label');
+    if (!src.complete) showPanel('sampleLoading');
+    // A keyboard choice can arrive before native lazy loading starts.
+    src.loading = 'eager';
+    try {
+      await src.decode();
+    } catch {
+      if (gen !== sampleGen || destroyed || mode !== 'samples') return;
+      showPanel('sampleError');
+      announce(PANELS.sampleError.title);
+      return;
+    }
+    if (gen !== sampleGen || destroyed || mode !== 'samples') return;
+    showPanel(null);
+    canvasCtx.drawImage(src, 0, 0, SAMPLE_WIDTH, SAMPLE_HEIGHT);
     sampleCanvas.setAttribute('aria-label', `Sample image: ${meta.name}`);
-    const roi = centerRoi(src.width, src.height, VIEW_ASPECT);
+    const roi = centerRoi(src.naturalWidth, src.naturalHeight, VIEW_ASPECT);
     analysisCtx.drawImage(src, roi.x, roi.y, roi.size, roi.size, 0, 0, ANALYSIS_SIZE, ANALYSIS_SIZE);
     let r;
     try {
@@ -564,7 +547,6 @@ export function mountScanner(rootEl, options = {}) {
   window.addEventListener('pagehide', onPageHide);
 
   let observer = null;
-  let thumbObserver = null;
   if (typeof IntersectionObserver === 'function') {
     observer = new IntersectionObserver((entries) => {
       visible = entries[entries.length - 1].isIntersecting;
@@ -573,14 +555,6 @@ export function mountScanner(rootEl, options = {}) {
     });
     observer.observe(container);
 
-    thumbObserver = new IntersectionObserver((entries) => {
-      if (destroyed || !entries.some((entry) => entry.isIntersecting)) return;
-      thumbObserver.disconnect();
-      queueThumbs();
-    }, { rootMargin: '240px' });
-    thumbObserver.observe(rootEl.closest('#demo') ?? container);
-  } else {
-    queueThumbs();
   }
 
   renderReading(null);
@@ -593,13 +567,9 @@ export function mountScanner(rootEl, options = {}) {
     releaseCamera();
     sampleGen++;
     clearTimeout(announceTimer);
-    for (const t of timers) clearTimeout(t);
-    timers.clear();
     observer?.disconnect();
-    thumbObserver?.disconnect();
     document.removeEventListener('visibilitychange', onVisibility);
     window.removeEventListener('pagehide', onPageHide);
-    sampleCache.clear();
     container.remove();
     if (mounted.get(rootEl) === api) mounted.delete(rootEl);
   }

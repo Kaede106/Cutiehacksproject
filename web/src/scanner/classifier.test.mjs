@@ -1,8 +1,11 @@
 // Run with: node src/scanner/classifier.test.mjs
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { classifyBuffer, centerRoi, cropResize, confidenceLevel } from './classifier.js';
 import { createSmoother } from './smoothing.js';
-import { SAMPLES, renderSample } from './samples.js';
+import { SAMPLES } from './samples.js';
 
 const SIZE = 128;
 
@@ -106,13 +109,19 @@ check('a clean orange is high confidence', () => {
   assert.equal(confidenceLevel(classifyBuffer(cases.find((c) => c[0] === 'orange')[1]).confidence), 'high');
 });
 
-console.log('\nProcedural samples (centre square, 128 px)');
-for (const s of SAMPLES) {
-  check(`sample "${s.name}" -> ${s.expected}`, () => {
-    const img = renderSample(s.id);
-    const crop = cropResize(img, centerRoi(img.width, img.height), SIZE);
-    const r = classifyBuffer(crop);
-    assert.equal(r.label, s.expected, `got ${fmt(r)}`);
+console.log('\nPhoto samples (centre square, 128 px)');
+const expectedLabels = { green: 'unripe', turning: 'ripening', deep: 'ripe', bowl: 'none' };
+const fixtureHashes = JSON.parse(readFileSync(new URL('./fixtures/webp-sha256.json', import.meta.url), 'utf8'));
+assert.deepEqual(SAMPLES.map(({ id }) => id).sort(), Object.keys(expectedLabels).sort());
+for (const { id, name, path } of SAMPLES) {
+  check(`sample "${name}" -> ${expectedLabels[id]}`, () => {
+    const webp = readFileSync(new URL(`../../public${path}.webp`, import.meta.url));
+    assert.equal(createHash('sha256').update(webp).digest('hex'), fixtureHashes[id], 'recapture pixels for the new photo');
+    const data = gunzipSync(readFileSync(new URL(`./fixtures/${id}.rgba.gz`, import.meta.url)));
+    assert.equal(data.length, SIZE * SIZE * 4);
+    const r = classifyBuffer({ data, width: SIZE, height: SIZE });
+    assert.equal(r.label, expectedLabels[id], `got ${fmt(r)}`);
+    assert.notEqual(confidenceLevel(r.confidence), 'low', `got ${fmt(r)}`);
     console.log(`       ${fmt(r)}`);
   });
 }
@@ -121,6 +130,13 @@ console.log('\nRegion of interest');
 check('centre square of a 4:3 frame', () => assert.deepEqual(centerRoi(400, 300), { x: 110, y: 60, size: 180 }));
 check('centre square of a 16:9 frame shown in 4:3', () => assert.deepEqual(centerRoi(1280, 720), { x: 424, y: 144, size: 432 }));
 check('centre square of a portrait frame shown in 4:3', () => assert.deepEqual(centerRoi(720, 960), { x: 198, y: 318, size: 324 }));
+check('pixels outside the centre square do not affect the reading', () => {
+  const frame = buffer((x, y) => (x >= 26 && x < 102 && y >= 26 && y < 102 ? ORANGE : GREEN));
+  const crop = cropResize(frame, centerRoi(frame.width, frame.height, 1), SIZE);
+  const reading = classifyBuffer(crop);
+  assert.equal(reading.label, 'ripe');
+  assert.equal(confidenceLevel(reading.confidence), 'high');
+});
 
 console.log('\nSmoothing');
 const ripe = { label: 'ripe', confidence: 0.9, scores: { unripe: 0, ripening: 0.1, ripe: 0.9 } };
