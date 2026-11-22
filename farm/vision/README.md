@@ -24,7 +24,7 @@ The webcam streams for about one second before the first reading so exposure can
 
 ## Choose a detector
 
-The runner defaults to YOLO when Ultralytics can be imported and the bundled `ml/image-classification/yolo26n.pt` weights are present. It loads the weights once per process and uses the model's COCO `orange` class to propose fruit boxes. The bot's colour heuristic classifies ripeness inside each box. If the weights or dependency are unavailable, the runner prints one notice and uses the colour detector.
+The runner defaults to YOLO when Ultralytics can be imported and the team's `yolo26n.pt` weights are present (looked up in `src/python/ml/image_classification/`, then `src/`, then the old `ml/image-classification/`). It loads the weights once per process and uses the model's COCO `orange` class to propose fruit boxes. The bot's colour heuristic classifies ripeness inside each box. If the weights or dependency are unavailable, the runner prints one notice and uses the colour detector.
 
 ```powershell
 python -m farm.vision scan --image path.jpg --detector yolo

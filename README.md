@@ -68,7 +68,7 @@ The parts never call each other: they share append-only files in one data folder
 | [`farm/vision/`](farm/vision/README.md) | The camera program: YOLO finds the oranges, the colour check judges ripeness |
 | [`farm/sensors/`](farm/sensors/README.md) | The Arduino serial bridge, simulator and reference sketch |
 | [`farm/dashboard/`](farm/dashboard/README.md) | The control room for the big screen |
-| [`ml/`](ml/) | Model experiments: YOLO detection and irrigation prediction |
+| [`src/`](src/) | The ML team's code: YOLO orange detection, the irrigation prediction model and camera integration |
 | [`sketch_nov21a/`](sketch_nov21a/) | The Arduino sketch: soil sensor, DHT11 and motor |
 | [`embedded/`](embedded/) | The STM32 Nucleo port, work in progress |
 
