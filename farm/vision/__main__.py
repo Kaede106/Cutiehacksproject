@@ -91,6 +91,42 @@ def report_scan(frame: np.ndarray, fruits: list[dict], *, source: str, model: st
     print(f"Saved scan {record['id']} ({len(fruits)} fruit)", flush=True)
 
 
+_last_live = 0.0
+
+
+def publish_live(frame: np.ndarray, fruits: list[dict], model: str, every: float = 0.7) -> None:
+    """About once a second, write the current frame and its detections to <data>/live/ for the dashboard.
+
+    Two files, each replaced atomically: frame.jpg and frame.json. The dashboard shows them as a live feed
+    while they are fresh. Nothing is appended to scans.jsonl; S still saves a real scan.
+    """
+    global _last_live
+    now = time.monotonic()
+    if now - _last_live < every:
+        return
+    _last_live = now
+    try:
+        import json, os
+        folder = store.data_dir() / "live"
+        folder.mkdir(exist_ok=True)
+        height, width = frame.shape[:2]
+        scale = min(1.0, 960 / max(width, 1))
+        small = cv2.resize(frame, (int(width * scale), int(height * scale))) if scale < 1 else frame
+        ok, encoded = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 80])
+        if not ok:
+            return
+        tmp = folder / "frame.jpg.tmp"
+        tmp.write_bytes(encoded.tobytes())
+        os.replace(tmp, folder / "frame.jpg")
+        meta = {"taken_at": store.now_iso(), "model": model, "width": small.shape[1], "height": small.shape[0],
+                "fruits": [dict(f, bbox=[round(v * scale) for v in f["bbox"]]) for f in fruits]}
+        tmp = folder / "frame.json.tmp"
+        tmp.write_text(json.dumps(meta), encoding="utf-8")
+        os.replace(tmp, folder / "frame.json")
+    except OSError:
+        pass  # the live feed is best effort; the window keeps working
+
+
 def live(index: int, classifier: Classifier, detector: Detector, model: str, health=None) -> None:
     window = "CutieFarm | S: save scan | Q: quit"
     with open_camera(index) as camera:
@@ -109,6 +145,7 @@ def live(index: int, classifier: Classifier, detector: Detector, model: str, hea
                     cv2.rectangle(preview, (x, y), (x + w - 1, y + h - 1), color, 2)
                     cv2.putText(preview, f"{fruit['id']} {tag}", (x, max(16, y - 6)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2, cv2.LINE_AA)
+                publish_live(frame, fruits, model)
                 cv2.imshow(window, preview)
                 key = cv2.waitKey(1) & 0xFF
                 if key in (ord("q"), ord("Q")):

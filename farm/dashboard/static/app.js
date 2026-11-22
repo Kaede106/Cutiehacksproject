@@ -97,7 +97,27 @@ function drawBoxes(stage, fruits, width, height) {
   stage.append(layer, ...chips);
 }
 
+let liveStage = null;
+function renderLive(live) {
+  const frame = $("frame");
+  if (cameraKey !== "live" || !liveStage) {
+    cameraKey = "live";
+    frame.replaceChildren();
+    liveStage = h("div", { class: "stage" });
+    const img = h("img", { alt: "Live camera with the oranges marked" });
+    liveStage.append(img, h("p", { class: "stage-note live-note" }, "Live camera"));
+    frame.append(liveStage);
+  }
+  const img = liveStage.querySelector("img");
+  liveStage.style.setProperty("--ratio", String(live.frame.w / live.frame.h));
+  const next = new Image();
+  next.onload = () => { img.src = next.src; drawBoxes(liveStage, live.fruits, live.frame.w, live.frame.h); };
+  next.src = live.image;
+}
+
 function renderCamera(state) {
+  if (state.live && !STATIC) { renderLive(state.live); return; }
+  liveStage = null;
   const frame = $("frame");
   const scan = state.scan;
   const key = JSON.stringify([state.data_folder, scan && [scan.id, scan.image, scan.fruits, scan.frame]]);

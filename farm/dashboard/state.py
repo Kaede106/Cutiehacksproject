@@ -135,6 +135,45 @@ def _fruits(record: dict[str, Any]) -> list[dict[str, Any]]:
     return fruits
 
 
+LIVE_MAX_AGE_S = 5
+
+
+def live_frame_path(folder: Path) -> Path | None:
+    """<folder>/live/frame.jpg if it exists (the only file the live route serves)."""
+    try:
+        path = (folder / "live" / "frame.jpg").resolve(strict=True)
+        root = (folder / "live").resolve(strict=True)
+        return path if path.parent == root and path.is_file() else None
+    except (OSError, ValueError):
+        return None
+
+
+def _live_state(folder: Path, now: datetime) -> dict[str, Any] | None:
+    """The camera window's latest frame and detections, while they are fresh (a few seconds old)."""
+    import json
+    image = live_frame_path(folder)
+    if image is None:
+        return None
+    try:
+        meta = json.loads((folder / "live" / "frame.json").read_text(encoding="utf-8"))
+        taken = datetime.fromisoformat(meta["taken_at"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    if taken.tzinfo is None:
+        taken = taken.replace(tzinfo=now.tzinfo)
+    age = (now - taken).total_seconds()
+    if age > LIVE_MAX_AGE_S or not isinstance(meta, dict):
+        return None
+    fruits = [f for f in meta.get("fruits", []) if isinstance(f, dict) and isinstance(f.get("bbox"), list)]
+    return {
+        "image": f"/live/frame.jpg?v={int(image.stat().st_mtime_ns // 1_000_000)}",
+        "frame": {"w": int(meta.get("width") or 640), "h": int(meta.get("height") or 480)},
+        "fruits": _fruits({"fruits": fruits}) if "_fruits" in globals() else fruits,
+        "model": meta.get("model") if isinstance(meta.get("model"), str) else None,
+        "age_s": max(0, int(age)),
+    }
+
+
 def _scan_state(folder: Path, scans: list[tuple[datetime, dict[str, Any]]], now: datetime) -> dict[str, Any] | None:
     if not scans:
         return None
@@ -339,7 +378,7 @@ def build_state(settings: Settings, now: datetime | None = None) -> dict[str, An
     folder = data_folder()
     state: dict[str, Any] = {
         "generated_at": round(now.timestamp()), "clock": f"{now.hour % 12 or 12}:{now.minute:02d}:{now.second:02d} {'AM' if now.hour < 12 else 'PM'}", "data_folder": folder.is_dir(),
-        "scan": None, "sensors": None, "watering": None, "feed": [], "notices": [],
+        "scan": None, "live": None, "sensors": None, "watering": None, "feed": [], "notices": [],
     }
     if not state["data_folder"]:
         state["sensors"] = _sensors_state([], now, settings)
@@ -347,6 +386,7 @@ def build_state(settings: Settings, now: datetime | None = None) -> dict[str, An
     scans = _scans(settings)
     rows = _sensor_rows(settings)
     state["scan"] = _scan_state(folder, scans, now)
+    state["live"] = _live_state(folder, now)
     state["sensors"] = _sensors_state(rows, now, settings)
     state["watering"] = _watering_state(folder, now, settings)
     state["feed"] = _feed(scans, rows, settings, now)
