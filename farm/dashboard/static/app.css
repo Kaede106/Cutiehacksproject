@@ -96,6 +96,22 @@ h1, h2 {
 .updated { color: var(--canopy-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .updated.lost { color: #ffd2b8; font-weight: 700; }
 
+/* --- demo snapshot (static export only: the banner and the wider time column) ---------- */
+
+body.static { grid-template-rows: auto var(--bar) minmax(0, 1fr); }
+
+.demo-banner {
+  padding: 0.5rem 1.5rem;
+  border-bottom: 2px solid var(--accent-edge);
+  background: var(--notice-bg);
+  color: var(--cf-ink);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.demo-banner a { color: inherit; font-weight: 700; text-underline-offset: 0.2em; white-space: nowrap; }
+.static .feed li { grid-template-columns: 9.5rem 6.4rem minmax(0, 1fr) auto; }
+
 /* --- layout ------------------------------------------------------------------------ */
 
 main {
@@ -321,7 +337,8 @@ h2 { font-size: 1.3rem; }
   .frame { aspect-ratio: 4 / 3; }
   .metric { grid-template-columns: 8rem 1fr; }
   .metrics .metric { min-height: 5rem; }
-  .feed li { grid-template-columns: 5rem 5.5rem 1fr; }
+  .feed li, .static .feed li { grid-template-columns: 7.5rem 5.5rem 1fr; }
+  .demo-banner { padding: 0.6rem 1rem; }
   .feed li .tag { grid-column: 3; justify-self: start; }
 }
 

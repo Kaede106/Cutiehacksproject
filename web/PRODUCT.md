@@ -7,6 +7,7 @@ CutieFarm is a Cutiehacks prototype for two questions: is this orange ready to p
 - The browser scanner estimates ripeness from peel colour in the centre of a webcam frame or a sample image. It runs entirely on the visitor’s device.
 - [@CutieFarmGroveBot](https://t.me/CutieFarmGroveBot?start=landing) runs on a team laptop. It labels demo scans and simulated sensor readings while the team connects the hardware. It sends updates while the laptop is running.
 - The watering simulator lets visitors change sample soil and weather inputs and see the suggested schedule.
+- A demo snapshot of the control room at `/dashboard/`, made from demo data (see below).
 
 | State | Visual cue | What the grower does |
 |---|---|---|
@@ -23,6 +24,12 @@ CutieFarm is a Cutiehacks prototype for two questions: is this orange ready to p
 - Send “picked 3” or “he regado” to log work. The commands are `/picked` and `/watered`. Use `/week` for a 7-day summary and `/stop` to unsubscribe.
 
 The bot analyses photos on the laptop. Chat questions, recent chat context and a text summary of the latest farm data go to OpenAI for answers. Voice notes go to OpenAI for transcription. Photos sent through Telegram stay on the laptop for analysis and are never sent to OpenAI. The browser scanner uploads nothing.
+
+## Control room
+
+The live control room (`python -m farm.dashboard`, in `farm/dashboard/`) is a read-only big-screen page: the latest camera frame with each orange boxed, the count ready to pick, the watering advice with the last 24 hours of soil, temperature and humidity, and an activity feed. It reads the local data folder, so it runs only on the farm laptop and is never exposed to the internet.
+
+The public site cannot link to it. Instead it serves a static demo snapshot at `/dashboard/`, made with `python -m farm.dashboard export` from a demo data folder (`web/public/dashboard/`, see its README). The snapshot page says in a banner that it is demo data from a given date and that the live version runs on the farm laptop. It keeps the demo and simulated labels, and its scan is a sample photo run through the camera program. The landing page links to it in “How it’s built” and in the footer, as a secondary link with “(demo data)” in its text. Refresh the snapshot by re-running the export before publishing.
 
 ## Hardware being connected
 
