@@ -42,14 +42,15 @@ LIMIT_NOTICE = "That's all the questions I can answer today. /status and /water 
 LABEL_TEXT = {"unripe": "unripe", "ripening": "ripening", "ripe": "ready to pick"}
 
 SYSTEM_PROMPT = """You are CutieFarm, a small assistant that looks after an orange grove.
-A camera labels each orange (unripe, ripening, ready to pick) and sensors read the soil, temperature, humidity and wind.
+A camera labels each orange (unripe, ripening, ready to pick), a CNN checks whether it looks healthy or may have citrus canker or melanose, and sensors read the soil, temperature, humidity and wind.
 Answer the grower's question using ONLY the farm data below. Rules:
 - Reply in the same language the grower writes in. Be short: one to four sentences, plain text, no Markdown.
 - Never invent oranges, numbers, dates, positions or readings that are not in the data. If the data can't answer, say so plainly and suggest /status or /water.
 - Positions (left, centre, right, top, bottom) refer to where each orange appears in the camera picture.
 - If the data is marked as demo or simulated, mention that once when it matters.
 - Watering advice is a rule of thumb, not agronomic certainty.
-- For any request outside orange ripeness and grove watering, say briefly that CutieFarm only checks ripeness and watering.
+- The health check is a model's estimate, not a diagnosis: suggest a close look at flagged fruit.
+- For any request outside orange ripeness, fruit health and grove watering, say briefly that CutieFarm only checks those.
 
 FARM DATA
 {context}"""
@@ -132,8 +133,12 @@ def farm_context(scan: Mapping[str, Any] | None, sensors: Mapping[str, Any] | No
         for f in fruits:
             fid, label = f.get("id"), str(f.get("label"))
             where = f", {pos[fid]} of the picture" if type(fid) is int and fid in pos else ""
+            verdict = f.get("health")
+            health = ""
+            if isinstance(verdict, dict) and verdict.get("label") in ("healthy", "citrus_canker", "melanose"):
+                health = f"; health check: {str(verdict['label']).replace('_', ' ')} ({verdict.get('confidence', 'unknown')} confidence)"
             lines.append(f"- Orange {fid}: {LABEL_TEXT[label]}"
-                         f" ({f.get('confidence', 'unknown')} confidence){where}.")
+                         f" ({f.get('confidence', 'unknown')} confidence){where}{health}.")
     if sensors:
         sim = " (SIMULATED, not real readings)" if sensors.get("simulated") else ""
         parts = []

@@ -20,7 +20,7 @@ from .access import is_allowed, photo_path
 from .autowater import AutoWater
 from .buttons import StatusButtons, status_keyboard
 from .chat import LIMIT_NOTICE, LIMITS_FILE, Conversation, LimitReached, farm_context, keyword_intent, strip_html
-from .compose import Message, Photo, _counts, compose
+from .compose import Message, Photo, _counts, compose, health_line, sick_fruits
 from .forecast import Forecast, forecast_harvest
 from .photo import classify_photo, photo_reply
 from .config import Config
@@ -363,9 +363,10 @@ class Handlers:
                 ripe = _counts(scan)["ripe"]
                 increase = ripe - self._last_ripe if self._last_ripe is not None else 0
                 self._last_scan_id, self._last_ripe = scan_id, ripe
-                if increase <= 0:
+                sick = sick_fruits(scan)
+                if increase <= 0 and not sick:
                     continue
-                message = ripe_alert(scan, increase, ripe)
+                message = ripe_alert(scan, increase, ripe, len(sick), health_line(scan) if sick else None)
                 chats = [c for c in self.state.chats() if is_allowed(c, self.config.allowed_chat_ids)]
                 log.info("Ripe alert for scan %s: sending to %d chat(s).", scan_id, len(chats))
                 for chat_id in chats:
@@ -436,9 +437,14 @@ def scan_key(scan: dict) -> str:
     return str(scan.get("id") or scan.get("taken_at"))
 
 
-def ripe_alert(scan: dict, increase: int, ripe: int) -> Message:
-    fruit = "orange is" if increase == 1 else "oranges are"
-    text = f"<b>{increase} more {fruit} ready to pick ({ripe} in total).</b>"
+def ripe_alert(scan: dict, increase: int, ripe: int, sick: int = 0, sick_text: str | None = None) -> Message:
+    parts = []
+    if increase > 0:
+        fruit = "orange is" if increase == 1 else "oranges are"
+        parts.append(f"<b>{increase} more {fruit} ready to pick ({ripe} in total).</b>")
+    if sick and sick_text:
+        parts.append(sick_text)
+    text = "\n".join(parts)
     if scan.get("demo"):
         text += "\n<i>Demo data: this scan is an example.</i>"
     image = scan.get("image")

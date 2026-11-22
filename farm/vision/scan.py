@@ -73,7 +73,7 @@ def find_boxes(rgb: np.ndarray) -> list[Box]:
     return boxes
 
 
-def classify_frame(frame: np.ndarray, classifier: Classifier, detector: Detector) -> list[dict]:
+def classify_frame(frame: np.ndarray, classifier: Classifier, detector: Detector, health=None) -> list[dict]:
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     fruits = []
     for x, y, w, h in sorted(detector(frame)):
@@ -89,8 +89,13 @@ def classify_frame(frame: np.ndarray, classifier: Classifier, detector: Detector
             raise ValueError("classifier must supply a numeric score for each label") from None
         if not all(isfinite(score) for score in scores.values()):
             raise ValueError("classifier scores must be finite")
-        fruits.append({"id": len(fruits) + 1, "label": label, "confidence": confidence,
-                       "scores": scores, "bbox": [x, y, w, h], "crop": None})
+        fruit = {"id": len(fruits) + 1, "label": label, "confidence": confidence,
+                 "scores": scores, "bbox": [x, y, w, h], "crop": None}
+        if health is not None:
+            verdict = health(crop)  # the ML team's CNN: healthy / citrus_canker / melanose
+            if verdict:
+                fruit["health"] = verdict
+        fruits.append(fruit)
     return fruits
 
 

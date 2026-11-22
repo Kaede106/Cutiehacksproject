@@ -73,7 +73,36 @@ def compose(
         )
         return Message(_join([headline, water_line, details, sensor_line,
                               _footer(scan, scan_time, now, with_time=False)]))
-    return Message(_join([_headline(counts), forecast_line(forecast), water_line, sensor_line, _footer(scan, scan_time, now)]))
+    return Message(_join([_headline(counts), health_line(scan), forecast_line(forecast), water_line, sensor_line,
+                          _footer(scan, scan_time, now)]))
+
+
+DISEASE_TEXT = {"citrus_canker": "citrus canker", "melanose": "melanose"}
+
+
+def sick_fruits(scan: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    """Fruits the ML team's health CNN flags as diseased (medium or high confidence)."""
+    out = []
+    for fruit in _fruits(scan):
+        verdict = fruit.get("health")
+        if (isinstance(verdict, Mapping) and verdict.get("label") in DISEASE_TEXT
+                and verdict.get("confidence") in ("high", "medium")):
+            out.append(fruit)
+    return out
+
+
+def health_line(scan: Mapping[str, Any]) -> str | None:
+    """One line about fruit health, only when the scan carries the CNN's verdicts."""
+    fruits = _fruits(scan)
+    if not any(isinstance(f.get("health"), Mapping) for f in fruits):
+        return None
+    sick = sick_fruits(scan)
+    if not sick:
+        return "Health check: all oranges look healthy."
+    kinds = sorted({DISEASE_TEXT[f["health"]["label"]] for f in sick})
+    n = len(sick)
+    return (f"<b>{n} orange{'s' if n != 1 else ''} may have {' or '.join(kinds)}:</b> "
+            f"take a look before it spreads.")
 
 
 def to_plain(text: str) -> str:

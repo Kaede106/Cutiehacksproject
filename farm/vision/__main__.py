@@ -15,6 +15,7 @@ from farm.bot.config import load_env_file
 from farm.common import store
 from farm.sensors.__main__ import duration
 from .detector import DEFAULT_WEIGHTS, load_detector
+from .health import load_health
 from .scan import MODEL, Classifier, Detector, classify_color, classify_frame, save_scan
 
 
@@ -90,7 +91,7 @@ def report_scan(frame: np.ndarray, fruits: list[dict], *, source: str, model: st
     print(f"Saved scan {record['id']} ({len(fruits)} fruit)", flush=True)
 
 
-def live(index: int, classifier: Classifier, detector: Detector, model: str) -> None:
+def live(index: int, classifier: Classifier, detector: Detector, model: str, health=None) -> None:
     window = "CutieFarm | S: save scan | Q: quit"
     with open_camera(index) as camera:
         cv2.namedWindow(window, cv2.WINDOW_NORMAL)
@@ -98,13 +99,15 @@ def live(index: int, classifier: Classifier, detector: Detector, model: str) -> 
             while True:
                 frame = read_camera(camera, index)
                 taken_at = store.now_iso()
-                fruits = classify_frame(frame, classifier, detector)
+                fruits = classify_frame(frame, classifier, detector, health)
                 preview = frame.copy()
                 for fruit in fruits:
                     x, y, w, h = fruit["bbox"]
-                    color = (0, 220, 255)
+                    sick = fruit.get("health", {}).get("label") not in (None, "healthy")
+                    color = (40, 40, 230) if sick else (0, 220, 255)
+                    tag = fruit["label"] + (f" | {fruit['health']['label'].replace('_', ' ')}" if fruit.get("health") else "")
                     cv2.rectangle(preview, (x, y), (x + w - 1, y + h - 1), color, 2)
-                    cv2.putText(preview, f"{fruit['id']} {fruit['label']}", (x, max(16, y - 6)),
+                    cv2.putText(preview, f"{fruit['id']} {tag}", (x, max(16, y - 6)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2, cv2.LINE_AA)
                 cv2.imshow(window, preview)
                 key = cv2.waitKey(1) & 0xFF
@@ -126,6 +129,8 @@ def add_model_options(parser: argparse.ArgumentParser, *, subcommand: bool = Fal
                         help="fruit finder (default: YOLO if available, otherwise colour)")
     parser.add_argument("--yolo-weights", type=Path, default=default if subcommand else DEFAULT_WEIGHTS,
                         help="path to the local YOLO weights")
+    parser.add_argument("--no-health", action="store_true", default=default if subcommand else False,
+                        help="skip the ML team's fruit-health CNN")
     parser.add_argument("--min-conf", type=float, default=default if subcommand else 0.35,
                         help="minimum YOLO detection confidence (default 0.35)")
 
@@ -154,12 +159,15 @@ def main(argv: list[str] | None = None) -> int:
         classifier, model = load_classifier(args.classifier)
         detector, model_prefix = load_detector(args.detector, args.yolo_weights, args.min_conf)
         model = model_prefix + model
+        health = None if args.no_health else load_health()
+        if health is not None:
+            model += "+orange-cnn-health"
         if args.command == "live":
-            live(args.camera, classifier, detector, model)
+            live(args.camera, classifier, detector, model, health)
         elif args.command == "scan" and args.image is not None:
             frame = read_image(args.image)
             taken_at = store.now_iso()
-            fruits = classify_frame(frame, classifier, detector)
+            fruits = classify_frame(frame, classifier, detector, health)
             report_scan(frame, fruits, source="file", model=model, taken_at=taken_at)
         else:
             while True:
@@ -167,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
                 with open_camera(args.camera) as camera:
                     frame = read_camera(camera, args.camera)
                     taken_at = store.now_iso()
-                fruits = classify_frame(frame, classifier, detector)
+                fruits = classify_frame(frame, classifier, detector, health)
                 report_scan(frame, fruits, source="webcam", model=model, taken_at=taken_at)
                 if args.command == "scan":
                     break
