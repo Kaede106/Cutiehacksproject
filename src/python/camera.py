@@ -12,6 +12,6 @@ def cam():
     if len(results)==0:
         return 1
     s = results[0][0]
-    return 0 if s < 280 else 2 if s > 290 else 1
+    return 0 if s < 270 else 2 if s > 300 else 1
 #while True:
     #print(cam())
